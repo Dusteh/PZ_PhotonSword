@@ -325,7 +325,9 @@ The basics are implemented but **not yet tested in-game**.
   `gen_sounds.py`.
 - Pillow 12.1 draws the textures and icons, and `gen_art.py` paints every mod's Workshop preview
   (256x256), mod list poster (256x256), and icon (32x32): a stylized ignited sword built from the
-  hilt model's profile and paint, in the default blade color (`--color` picks another).
+  hilt model's profile and paint. Each mod has its own blade color and emblem: Photon Sword blue,
+  Forms purple in an enso (its slash trail), the A-Life patch green over a heartbeat the blade
+  spikes, the Bandits patch red before a masked bandit. The previews carry the mod's title.
 - FFmpeg 8.0 with libvorbis encodes the Ogg sound effects.
 - Blender 5.0 previews the generated meshes (`gen_models.py --preview` writes OBJs).
 - `tools/anim/` authors the stance clips from vanilla's animations (NumPy; `xfile.py` reads and

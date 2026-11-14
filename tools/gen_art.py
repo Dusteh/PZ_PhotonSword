@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Paints the mods' stylized art: an ignited photon sword, drawn flat with a glowing blade.
 
-    python3 tools/gen_art.py [--color NAME]
+    python3 tools/gen_art.py
 
-Writes, for every mod in the repo (they share one look):
-  <Mod>/preview.png                     256x256 Workshop thumbnail
+Writes, for every mod in the repo:
+  <Mod>/preview.png                     256x256 Workshop thumbnail (the poster, titled)
   <Mod>/Contents/mods/<Mod>/42/poster.png   256x256 mod list poster
   <Mod>/Contents/mods/<Mod>/42/icon.png     32x32 mod list icon (transparent)
 
+Each mod has its own blade color, and its own emblem behind the sword: Forms an enso, its slash
+trail; the patches the mod they patch, fused with the sword (A-Life a heartbeat the blade spikes,
+shared with this repo's other A-Life patches; Bandits a masked bandit lit by the blade).
 The hilt is the model's own silhouette (gen_models.hilt_profile) and paint bands, widened so it
-reads at icon size; the blade is gen_models' default palette color unless --color picks another.
-Everything is drawn upright at 4x, turned 45 degrees, and downscaled for clean edges. Needs Pillow
-and numpy (for gen_models).
+reads at icon size. Everything is drawn upright at 4x, turned 45 degrees, and downscaled for clean
+edges. Needs Pillow, numpy (for gen_models), and the DejaVu fonts (for the preview titles).
 """
 
 import argparse
@@ -19,13 +21,12 @@ import math
 import os
 import sys
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_models import BLADE_PROFILE, BLADE_RADIUS, PALETTE, hilt_profile, mix  # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-MODS = ("PhotonSword", "PhotonSwordForms", "PhotonSwordALife", "PhotonSwordBandits")
 SS = 4  # supersampling
 POMMEL_Y = hilt_profile()[0][0]
 TIP_Y = BLADE_PROFILE[-1][0]
@@ -140,10 +141,125 @@ def background(size, color):
                            Image.new("RGBA", (side, side), inner + (255,)), grad)
 
 
-def framed(size, color):
+def glow_line(img, points, color, width, blur, core=True):
+    """A glowing polyline on img (in place): a blurred halo in color, then a lighter core."""
+    halo = Image.new("RGBA", img.size, color + (0,))
+    mask = Image.new("L", img.size, 0)
+    ImageDraw.Draw(mask).line(points, fill=200, width=int(width * 3), joint="curve")
+    halo.putalpha(mask.filter(ImageFilter.GaussianBlur(blur)))
+    img.alpha_composite(halo)
+    d = ImageDraw.Draw(img)
+    d.line(points, fill=mix(color, (255, 255, 255), 0.35) + (255,), width=int(width), joint="curve")
+    if core:
+        d.line(points, fill=(255, 255, 255, 255), width=max(1, int(width * 0.35)), joint="curve")
+
+
+def heartbeat(side, height=0.5):
+    """A heartbeat trace across the canvas, its beat where the blade crosses it (the blade runs
+    corner to corner, so at x = 1 - height)."""
+    x0 = 1 - height
+    shape = [(0, 0), (x0 - 0.22, 0), (x0 - 0.17, -0.035), (x0 - 0.12, 0), (x0 - 0.05, 0),
+             (x0 - 0.02, 0.05), (x0 + 0.04, -0.27), (x0 + 0.10, 0.17), (x0 + 0.14, 0),
+             (x0 + 0.22, 0), (x0 + 0.28, -0.06), (x0 + 0.34, 0), (1, 0)]
+    return [(x * side, (height + y) * side) for x, y in shape]
+
+
+def alife(img, color, side):
+    """Project A-Life: a heartbeat in the blade's color, beating where the blade crosses it."""
+    glow_line(img, heartbeat(side), color, side * 0.018, side * 0.02)
+
+
+def enso(img, color, side):
+    """Forms: a brushed enso round the sword, a slash trail that swells, then thins and fades."""
+    cx = cy = side / 2
+    radius, thick = side * 0.39, side * 0.08
+    start, sweep, steps = math.radians(10), math.radians(300), 240  # ends behind the tip
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    light = mix(color, (255, 255, 255), 0.3)
+    for i in range(steps):
+        t0, t1 = i / steps, (i + 1) / steps
+        t = (t0 + t1) / 2
+        # The head of the stroke (t = 1) is thick and bright; the tail thins and fades out.
+        w = thick * (0.08 + 0.92 * t ** 1.4) * min(1, (1 - t) * 14 + 0.25)
+        alpha = int(255 * min(1, 0.1 + t ** 0.8))
+        pts = []
+        for tt, r in ((t0, radius + w / 2), (t1, radius + w / 2), (t1, radius - w / 2), (t0, radius - w / 2)):
+            ang = start + sweep * tt
+            pts.append((cx + math.cos(ang) * r, cy + math.sin(ang) * r))
+        d.polygon(pts, fill=light + (alpha,))
+    halo = Image.new("RGBA", img.size, color + (0,))
+    halo.putalpha(layer.getchannel("A").filter(ImageFilter.GaussianBlur(side * 0.025)).point(lambda v: v * 0.8))
+    img.alpha_composite(halo)
+    img.alpha_composite(layer.filter(ImageFilter.GaussianBlur(side * 0.002)))
+
+
+def bandit(img, color, side):
+    """Bandits: a masked bandit's head and shoulders behind the blade, lit from it."""
+    s = side
+    body = Image.new("L", img.size, 0)
+    bd = ImageDraw.Draw(body)
+    hx, hy, hr = 0.47 * s, 0.38 * s, 0.15 * s
+    bd.ellipse([hx - hr, hy - hr * 1.12, hx + hr, hy + hr * 1.12], fill=255)
+    bd.rectangle([hx - hr * 0.5, hy, hx + hr * 0.5, 0.64 * s], fill=255)
+    bd.chord([0.1 * s, 0.6 * s, 0.84 * s, 1.5 * s], 180, 360, fill=255)
+    # Lit from the blade, up and to the right: a soft rim on that side of the silhouette.
+    shifted = Image.new("L", img.size, 0)
+    shifted.paste(body, (-int(s * 0.014), int(s * 0.014)))
+    rim_mask = Image.composite(body, Image.new("L", img.size, 0), shifted.point(lambda v: 255 - v))
+    rim = Image.new("RGBA", img.size, mix(color, (255, 255, 255), 0.2) + (0,))
+    rim.putalpha(rim_mask.filter(ImageFilter.GaussianBlur(s * 0.006)).point(lambda v: v * 0.85))
+    img.paste(Image.new("RGBA", img.size, (30, 26, 34, 255)), (0, 0), body)
+    img.alpha_composite(rim)
+    d = ImageDraw.Draw(img)
+    # The bandana over the lower face, its knot behind, and the eyes in the gap above it.
+    cloth = mix(color, (30, 6, 8), 0.6) + (255,)
+    fold = mix(color, (30, 6, 8), 0.75) + (255,)
+    d.polygon([(hx - hr * 1.03, hy + hr * 0.02), (hx + hr * 1.03, hy + hr * 0.02),
+               (hx + hr * 0.8, hy + hr * 0.7), (hx, hy + hr * 1.45), (hx - hr * 0.8, hy + hr * 0.7)], fill=cloth)
+    d.line([(hx - hr * 0.7, hy + hr * 0.45), (hx, hy + hr * 0.95), (hx + hr * 0.7, hy + hr * 0.45)],
+           fill=fold, width=int(hr * 0.08))
+    for ex in (-0.4, 0.4):
+        x, y = hx + ex * hr, hy - hr * 0.25
+        d.ellipse([x - hr * 0.19, y - hr * 0.06, x + hr * 0.19, y + hr * 0.06], fill=(255, 236, 220, 255))
+
+
+# Mod -> (blade color, emblem drawn behind the sword or None, preview title lines).
+MODS = {
+    "PhotonSword": (PALETTE["Blue"], None, ("PHOTON SWORD",)),
+    "PhotonSwordForms": (PALETTE["Purple"], enso, ("PHOTON SWORD", "FORMS")),
+    "PhotonSwordALife": (PALETTE["Green"], alife, ("PHOTON SWORD", "\u00d7 PROJECT A-LIFE")),
+    "PhotonSwordBandits": (PALETTE["Red"], bandit, ("PHOTON SWORD", "\u00d7 BANDITS")),
+}
+FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+
+def framed(size, color, emblem):
     img = background(size, color)
+    if emblem:
+        emblem(img, color, size * SS)
     img = Image.alpha_composite(img, render_sword(size, color, radial=1.9, glow=1.0, fill=0.8))
     return img.resize((size, size), Image.LANCZOS)
+
+
+def titled(art, lines):
+    """The poster with its title over a dark fade at the bottom, for the Workshop thumbnail."""
+    img = art.copy()
+    w, h = img.size
+    fade = Image.linear_gradient("L").resize((w, h // 3))
+    img.paste(Image.new("RGBA", fade.size, (4, 5, 10, 255)), (0, h - fade.height), fade.point(lambda v: v * 0.9))
+    d = ImageDraw.Draw(img)
+    y = h - 12
+    for i in reversed(range(len(lines))):
+        size = (22, 14)[min(i, 1)]
+        font = ImageFont.truetype(FONT, size)
+        while d.textlength(lines[i], font=font) > w - 20:  # shrink to fit the width
+            size -= 1
+            font = ImageFont.truetype(FONT, size)
+        y -= font.size + 4
+        d.text((w / 2, y), lines[i], font=font, fill=(240, 242, 250), anchor="mt",
+               stroke_width=2, stroke_fill=(4, 5, 10))
+    return img
 
 
 def icon(color):
@@ -152,20 +268,14 @@ def icon(color):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--color", default=next(iter(PALETTE)), choices=PALETTE)
-    args = parser.parse_args()
-    color = PALETTE[args.color]
-
-    preview = poster = framed(256, color)
-    small = icon(color)
-    for mod in MODS:
-        preview.save(os.path.join(ROOT, mod, "preview.png"), optimize=True)
+    argparse.ArgumentParser(description=__doc__.splitlines()[0]).parse_args()
+    for mod, (color, emblem, lines) in MODS.items():
+        poster = framed(256, color, emblem)
+        titled(poster, lines).convert("RGB").save(os.path.join(ROOT, mod, "preview.png"), optimize=True)
         info_dir = os.path.join(ROOT, mod, "Contents", "mods", mod, "42")
-        poster.save(os.path.join(info_dir, "poster.png"), optimize=True)
-        small.save(os.path.join(info_dir, "icon.png"), optimize=True)
-    print(f"Wrote preview.png (256), poster.png (256), and icon.png (32) for {len(MODS)} mods "
-          f"({args.color} blade)")
+        poster.convert("RGB").save(os.path.join(info_dir, "poster.png"), optimize=True)
+        icon(color).save(os.path.join(info_dir, "icon.png"), optimize=True)
+    print(f"Wrote preview.png (256), poster.png (256), and icon.png (32) for {len(MODS)} mods")
 
 
 if __name__ == "__main__":

@@ -245,8 +245,8 @@ Known gaps to work on next:
   the left arm comes in under the right hand instead of wrapping around it).
 - The stance clips and their tools (`make_ready.py`, `make_rest.py`, `make_aim_beckon.py`,
   `make_guard.py`, `render.py`) are Photon Sword's; see the [README](../README.md#stance-animation-tools).
-- `python3 tools/gen_art.py` paints the art every mod in the repo shares: a stylized ignited photon
-  sword for `preview.png` (256x256), `42/poster.png` (256x256), and `42/icon.png` (32x32). See the
+- `python3 tools/gen_art.py` paints every mod's art: a stylized ignited photon sword, Forms' purple
+  in an enso, for `preview.png` (256x256), `42/poster.png` (256x256), and `42/icon.png` (32x32). See the
   [README](../README.md). `tools/anim/poster.py` still renders a character in the ready stance with
   Blender, if you want that look instead.
   Pass absolute output paths; Blender treats relative ones as relative to the blend file.

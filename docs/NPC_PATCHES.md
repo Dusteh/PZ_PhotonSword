@@ -33,7 +33,7 @@ way: if two patches need the same logic, move it into Photon Sword.
 | 11 | **No back-door spawns** | The NPC mod's own automatic loot or weapon scans never hand out photon swords, so feature 5 is the only way an NPC gets one. | Nothing to exclude | Both item types excluded from ModLoot (`PSA_ModLoot.lua`) |
 | 12 | **Sandbox section** | A section of the shared Photon Sword sandbox page (`page = PhotonSword`, registered with `PS.addSandboxSection`) with exactly `SpawnChance` and `BladeColor`, same labels, tooltips, ranges, and defaults. | Bandits NPCs section (`PSB_Sandbox.lua`) | Project A-Life NPCs section (`PSA_Sandbox.lua`) |
 | 13 | **Load order and requirements** | `require=\PhotonSword,\<NPC mod>`; `loadModAfter=\PhotonSword,\PhotonSwordForms,\<NPC mod>` (B42 writes mod ids with a leading backslash); works with or without Photon Sword Forms. | `Bandits2` | `ProjectALifeNPCs` |
-| 14 | **Shared art and docs** | Same preview, poster, and icon (`tools/gen_art.py`); `mod.info` and `workshop.txt` describe features 1-11 (with 4b-4e); MIT licensed. | Yes | Yes |
+| 14 | **Art and docs** | Its own blade color and an emblem for the NPC mod, fused with the sword (`tools/gen_art.py`); `mod.info` and `workshop.txt` describe features 1-11 (with 4b-4e); MIT licensed. | Yes | Yes |
 
 ## Not supported in any NPC patch
 
