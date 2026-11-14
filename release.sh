@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# Builds the mods' Steam Workshop releases into releases/ at the repo root.
+#
+#   ./release.sh [MOD...]     check every mod (or just the ones named) and build it into releases/
+#   ./release.sh --sync-ids   after uploading, copy each item's new id= back into this repo
+#
+# Each mod's Workshop folder (workshop.txt, preview.png, Contents/) is checked against the game
+# uploader's rules and copied to releases/<MOD>. Only those files go: tools/, dev/ (the dev
+# kits), docs/, and the generators never leave the repo. Set WORKSHOP_DIR to build somewhere else.
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")" && pwd)"
+workshop="${WORKSHOP_DIR:-$root/releases}"
+all_mods=(PhotonSword PhotonSwordForms PhotonSwordALife PhotonSwordBandits)
+errors=0
+
+fail() {
+    echo "  ERROR: $*" >&2
+    errors=$((errors + 1))
+}
+
+# The id= line of a workshop.txt, if it has one.
+item_id() {
+    [ -f "$1" ] && grep -m1 '^id=' "$1" | cut -d= -f2- || true
+}
+
+# --sync-ids: the uploader writes the new item's id= into the uploaded workshop.txt. Keep it in the
+# repo, so the next upload updates that item instead of creating another.
+if [ "${1:-}" = "--sync-ids" ]; then
+    for mod in "${all_mods[@]}"; do
+        id="$(item_id "$workshop/$mod/workshop.txt")"
+        repo_id="$(item_id "$root/$mod/workshop.txt")"
+        if [ -z "$id" ]; then
+            echo "$mod: not uploaded yet (no id= in $workshop/$mod/workshop.txt)"
+        elif [ "$id" = "$repo_id" ]; then
+            echo "$mod: id=$id (already in the repo)"
+        elif [ -n "$repo_id" ]; then
+            fail "$mod: releases/ has id=$id but the repo has id=$repo_id; fix one by hand"
+        else
+            sed -i "s/^version=\(.*\)$/version=\1\nid=$id/" "$root/$mod/workshop.txt"
+            echo "$mod: id=$id written to $mod/workshop.txt"
+        fi
+    done
+    [ "$errors" -eq 0 ] || exit 1
+    echo "Commit the workshop.txt changes."
+    exit 0
+fi
+
+mods=("$@")
+if [ "${#mods[@]}" -eq 0 ]; then
+    mods=("${all_mods[@]}")
+fi
+
+if [ -n "$(git -C "$root" status --porcelain)" ]; then
+    echo "WARNING: uncommitted changes; the release won't match a commit." >&2
+fi
+
+# check MOD: the rules the game's uploader (SteamWorkshopItem.validateContents) and loader apply,
+# plus a syntax check of every Lua and JSON file that ships.
+check() {
+    local mod="$1" dir="$root/$1"
+    local contents="$dir/Contents" moddir="$dir/Contents/mods/$1"
+    echo "Checking $mod"
+
+    [ -f "$dir/workshop.txt" ] || fail "$mod/workshop.txt is missing"
+    [ "$(item_id "$dir/workshop.txt")" != "0" ] || fail "$mod/workshop.txt has id=0, which the uploader takes for a real item; delete the line"
+    grep -q '^title=' "$dir/workshop.txt" || fail "$mod/workshop.txt has no title="
+
+    # preview.png: a 256x256 PNG of at most 1000KB, as the uploader's error messages state
+    # (UI_WorkshopError_Preview* in the game's media/lua/shared/Translate/EN/UI.json).
+    python3 -I - "$dir/preview.png" <<'EOF' || errors=$((errors + 1))
+import struct, sys, os
+path = sys.argv[1]
+if not os.path.isfile(path):
+    sys.exit(f"  ERROR: {path} is missing")
+with open(path, "rb") as f:
+    head = f.read(24)
+if head[:8] != b"\x89PNG\r\n\x1a\n":
+    sys.exit(f"  ERROR: {path} isn't a PNG")
+w, h = struct.unpack(">II", head[16:24])
+if (w, h) != (256, 256):
+    sys.exit(f"  ERROR: {path} is {w}x{h}; the uploader takes 256x256")
+if os.path.getsize(path) > 1024000:
+    sys.exit(f"  ERROR: {path} is over 1,024,000 bytes")
+EOF
+
+    # Contents/ holds only mods/<MOD>, with both the 42/ and common/ folders.
+    [ "$(ls -A "$contents")" = "mods" ] || fail "$mod/Contents must hold only mods/"
+    [ "$(ls -A "$contents/mods")" = "$mod" ] || fail "$mod/Contents/mods must hold only $mod/"
+    [ -d "$moddir/42" ] || fail "$mod has no 42/ folder"
+    [ -d "$moddir/common" ] || fail "$mod has no common/ folder (Build 42 needs it, even empty)"
+
+    # mod.info: its id matches the folder, and its poster and icon exist.
+    local info="$moddir/42/mod.info"
+    if [ -f "$info" ]; then
+        [ "$(grep -m1 '^id=' "$info" | cut -d= -f2-)" = "$mod" ] || fail "$mod mod.info's id= isn't $mod"
+        grep -q '^modversion=' "$info" || fail "$mod mod.info has no modversion="
+        local key file
+        for key in poster icon; do
+            file="$(grep -m1 "^$key=" "$info" | cut -d= -f2- || true)"
+            [ -z "$file" ] || [ -f "$moddir/42/$file" ] || fail "$mod mod.info's $key=$file is missing"
+        done
+    else
+        fail "$mod has no 42/mod.info"
+    fi
+
+    # Nothing generative or dev-only ships.
+    local stray
+    stray="$(find "$contents" \( -name '*.py' -o -name '*.pyc' -o -name '__pycache__' -o -name '*.blend' \
+        -o -name '*.blend1' -o -name '*DevKit*' -o -name '.*' ! -name '.gitkeep' \) -print)"
+    [ -z "$stray" ] || fail "$mod ships files that belong outside the mod: $stray"
+
+    local f
+    while IFS= read -r -d '' f; do
+        luac5.1 -p "$f" 2>/dev/null || fail "Lua syntax: ${f#"$root"/}"
+    done < <(find "$moddir" -name '*.lua' -print0)
+    while IFS= read -r -d '' f; do
+        python3 -I -m json.tool "$f" >/dev/null 2>&1 || fail "JSON syntax: ${f#"$root"/}"
+    done < <(find "$moddir" -name '*.json' -print0)
+}
+
+for mod in "${mods[@]}"; do
+    [ -d "$root/$mod/Contents" ] || { fail "no mod named $mod"; continue; }
+    check "$mod"
+done
+if [ "$errors" -gt 0 ]; then
+    echo "$errors problem(s); nothing built." >&2
+    exit 1
+fi
+
+for mod in "${mods[@]}"; do
+    dest="$workshop/$mod"
+    # An id= in releases/ the repo doesn't have yet (uploaded, not synced) is kept, so the next
+    # upload updates that item instead of creating a duplicate.
+    built_id="$(item_id "$dest/workshop.txt")"
+    mkdir -p "$dest/Contents"
+    rsync -a --delete --exclude='.gitkeep' "$root/$mod/Contents/" "$dest/Contents/"
+    cp "$root/$mod/preview.png" "$dest/preview.png"
+    cp "$root/$mod/workshop.txt" "$dest/workshop.txt"
+    if [ -n "$built_id" ] && [ -z "$(item_id "$root/$mod/workshop.txt")" ]; then
+        sed -i "s/^version=\(.*\)$/version=\1\nid=$built_id/" "$dest/workshop.txt"
+        echo "NOTE: $mod keeps id=$built_id; run ./release.sh --sync-ids" >&2
+    fi
+    version="$(grep -m1 '^modversion=' "$root/$mod/Contents/mods/$mod/42/mod.info" | cut -d= -f2-)"
+    id="$(item_id "$dest/workshop.txt")"
+    if [ -n "$id" ]; then
+        echo "Built $mod $version to $dest (updates Workshop item $id)"
+    else
+        echo "Built $mod $version to $dest (new Workshop item)"
+    fi
+done
+echo "Upload each releases/<MOD> folder (see README: Releasing). Then run ./release.sh --sync-ids."

@@ -5,6 +5,7 @@
 --   PSGuard      holding it aimed: the ready stance (PS_Ready, PS_ReadyWalk while walking)
 --   PSBeckon     now and then in the ready stance, standing: the off hand beckons (PS_ReadyBeckon)
 --   PSHiltBeckon the same beckon aiming an extinguished hilt, the off hand free (PS_AimBeckon)
+--   PSParry      in the ready stance just after its guard blocked a photon sword (PS_Parry)
 --   PSFemale, PSWalking
 -- Another mod's yield (PS.addStanceYield) keeps the stance out while its own animation plays, and
 -- the Default Two-Handed Animations option (PS_Options.lua) keeps it out on this client altogether,
@@ -20,6 +21,7 @@ local PS = PhotonSword
 local PSO = PhotonSwordOptions
 
 local BECKON_ROLL_MS, BECKON_MS = 3000, 2200
+local PARRY_MS = 850   -- PS_Parry, less its blend back
 local beckons = setmetatable({}, { __mode = "k" })
 local hiltBeckons = setmetatable({}, { __mode = "k" })
 local holding = setmetatable({}, { __mode = "k" })  -- players whose stance variables are set
@@ -49,7 +51,7 @@ end
 local function clear(playerObj)
     holding[playerObj] = nil
     beckons[playerObj] = nil
-    for _, name in ipairs({ "PSHolding", "PSGuard", "PSBeckon", "PSWalking", "PSFemale" }) do
+    for _, name in ipairs({ "PSHolding", "PSGuard", "PSBeckon", "PSParry", "PSWalking", "PSFemale" }) do
         playerObj:setVariable(name, false)
     end
 end
@@ -66,6 +68,7 @@ local function updateHold(playerObj)
     playerObj:setVariable("PSFemale", playerObj:isFemale())
     playerObj:setVariable("PSWalking", walking)
     playerObj:setVariable("PSGuard", guard)
+    playerObj:setVariable("PSParry", guard and PS.parrying(playerObj, PARRY_MS))
     playerObj:setVariable("PSBeckon", beckoning(beckons, playerObj, guard and not walking))
 end
 

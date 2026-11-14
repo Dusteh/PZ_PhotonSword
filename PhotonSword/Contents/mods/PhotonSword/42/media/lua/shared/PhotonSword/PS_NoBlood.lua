@@ -15,3 +15,8 @@ local function onPlayerUpdate(playerObj)
 end
 
 Events.OnPlayerUpdate.Add(onPlayerUpdate)
+
+-- NPCs' blades (Bandits, Project A-Life): each client cleans the ones it draws.
+if not isServer() then
+    Events.OnTick.Add(function() PS.forEachNpcWielder(onPlayerUpdate) end)
+end

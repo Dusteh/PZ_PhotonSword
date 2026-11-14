@@ -38,6 +38,8 @@ local volleys = setmetatable({}, { __mode = "k" })
 local DEFAULTS = {
     DeflectBullets = true, DeflectChanceMin = 10, DeflectChanceMax = 80, DeflectStrikesBack = true,
     SoakShotgunBlasts = true, SoakMin = 10, SoakMax = 50, SoakFullChance = 60,
+    BlockPhotonSwords = true, BlockChanceMin = 30, BlockChanceMax = 90, NpcBlockChance = 35,
+    NpcVsNpcBlockChance = 20,
 }
 
 -- A deflect sandbox option's value.
@@ -103,15 +105,18 @@ local function spread(weapon)
     return weapon:getProjectileCount() > 1
 end
 
--- Whether target's raised guard can take a shot from attacker now: raised and facing the shooter.
+-- Whether attacker is within arc (a cosine) of the direction (fx, fy) target faces.
+local function faces(target, attacker, fx, fy, arc)
+    local dx, dy = attacker:getX() - target:getX(), attacker:getY() - target:getY()
+    local d = math.sqrt(dx * dx + dy * dy)
+    return d >= .01 and (dx * fx + dy * fy) / d >= arc
+end
+
+-- Whether target's raised guard can take a shot or blow from attacker now: raised and facing them.
 local function guardFaces(target, attacker, now)
     if not target or not attacker or target == attacker or not instanceof(target, "IsoPlayer") then return false end
     if target:isOnFloor() or not PS.guardUp(target, now) then return false end
-    local dx, dy = attacker:getX() - target:getX(), attacker:getY() - target:getY()
-    local d = math.sqrt(dx * dx + dy * dy)
-    if d < .01 then return false end
-    local fx, fy, arc = PS.guardFacing(target)
-    return (dx * fx + dy * fy) / d >= arc
+    return faces(target, attacker, PS.guardFacing(target))
 end
 
 -- The earlier result for this shot, if a pellet of it was already settled.
@@ -136,12 +141,14 @@ function PS.strikeBack(attacker, target, weapon, damage)
     end
 end
 
--- share: nil for a deflected bullet, else how much of a shotgun blast the guard soaked.
-local function announce(target, share, echo)
+-- share: nil for a deflected bullet, else how much of a shotgun blast the guard soaked. parry: the
+-- guard blocked a photon sword's strike (the stance plays its parry).
+local function announce(target, share, echo, parry)
     if isServer() then
-        sendServerCommand("PhotonSword", "deflect", { playerID = target:getOnlineID(), share = share, echo = echo == true })
+        sendServerCommand("PhotonSword", "deflect",
+            { playerID = target:getOnlineID(), share = share, echo = echo == true, parry = parry == true })
     elseif PS.showDeflect then
-        PS.showDeflect(target, share)
+        PS.showDeflect(target, share, parry)
     end
 end
 
@@ -193,6 +200,128 @@ function PS.soak(player, share, fn, ...)
     return unpack(result)
 end
 
+-- Blocking photon swords: a raised guard also stops a photon sword's strike from in front of it,
+-- another player's or an NPC's (from the patch mods). The ready stance rolls PS.blockChance, which
+-- slides between the sandbox's BlockChanceMin and Max with guard skill; a Form's block (Photon Sword
+-- Forms) always holds while its meter pays. Each block costs PS.guardDrain, as a deflection does, and
+-- shows as "Blocked" with the spark. Two more hooks:
+--   PS.blockChance(player)                  percent chance player's guard blocks a strike
+--   PS.meleeGuardHandled(attacker, player)  true when another mod settles that strike itself (Forms:
+--                                           Martial Arts Core's block already settles players' blows)
+-- And an NPC holding a photon sword blocks a strike from in front: a player's at NpcBlockChance,
+-- another NPC's at NpcVsNpcBlockChance (PS.npcBlocks; the patch mods ask it about NPCs' fights). Players' strikes on players and on NPCs come in through OnWeaponHitCharacter below;
+-- NPCs' strikes on players through PS.judgeBlow and PS.judgeLocalBlow, from the patch mods.
+
+local NPC_BLOCK_MS = 300   -- an NPC mod asking again about the same strike gets the same answer
+local npcBlocked = setmetatable({}, { __mode = "k" })
+
+local function photonStrike(weapon)
+    return PS.isIgnited(weapon) and instanceof(weapon, "HandWeapon") and not weapon:isRanged()
+end
+
+function PS.blockChance(player)
+    local low, high = range("BlockChanceMin", "BlockChanceMax")
+    return 100 * (low + (high - low) * PS.guardSkill(player))
+end
+
+function PS.meleeGuardHandled(attacker, player)
+    return false
+end
+
+-- Rolls target's guard against a photon sword's strike. pay(drain) settles the guard and returns
+-- whether it held.
+local function judgeBlow(attacker, target, weapon, now, pay)
+    if not photonStrike(weapon) or not PS.deflectSetting("BlockPhotonSwords") then return false end
+    if not guardFaces(target, attacker, now) then return false end
+    return ZombRand(100) < PS.blockChance(target) and pay(PS.guardDrain(attacker, target, weapon))
+end
+
+-- With authority over target's guard (the server, or single player): whether target's guard blocks
+-- attacker's strike with weapon. A blocked strike deals no damage; the caller stops it.
+function PS.judgeBlow(attacker, target, weapon)
+    if not target or not instanceof(target, "IsoPlayer") then return false end
+    local now = getTimestampMs()
+    local blocked = judgeBlow(attacker, target, weapon, now,
+        function(drain) return PS.drainGuard(target, drain, now) end)
+    if blocked then announce(target, 1, nil, true) end
+    return blocked
+end
+
+-- On a client, for a strike it runs itself (another mod's NPC) at one of its local players: as
+-- PS.judgeBlow, going by this client's view of the guard, with a "deflect" command asking the
+-- server to settle it (in single player it's settled here).
+function PS.judgeLocalBlow(attacker, player, weapon)
+    if not player or not IsoPlayer.isLocalPlayer(player) then return false end
+    local now = getTimestampMs()
+    local blocked = judgeBlow(attacker, player, weapon, now, function(drain)
+        if AUTH then return PS.drainGuard(player, drain, now) end
+        sendClientCommand(player, "PhotonSword", "deflect", { drain = drain, share = 1, parry = true })
+        return PS.guardPays(player, drain)
+    end)
+    if blocked and PS.showDeflect then PS.showDeflect(player, 1, true) end
+    return blocked
+end
+
+-- Whether npc (a zombie-based NPC holding a photon sword) blocks attacker's photon sword strike: on
+-- its feet, facing the attacker, at NpcBlockChance for a player's strike or NpcVsNpcBlockChance for
+-- another NPC's. On a client its blade must also be lit
+-- (PS_NpcBlades.lua; the server doesn't track that). One roll per strike, however often it's asked.
+-- How an NPC shows its block: the parry (PS_Parry, the ready stance's), played once in the zombie
+-- "bumped" state by BumpType, as Bandits plays its NPCs' actions and staggers (the PS_parry zombie
+-- AnimSet, tools/gen_animsets.py). A patch whose NPC mod plays its own animations replaces it
+-- (Project A-Life: PSA_Parry.lua). It runs where the block is decided.
+function PS.playNpcParry(npc)
+    if npc:isDead() or npc:isOnFloor() then return end
+    PS.noteParry(npc)
+    npc:setBumpType("PSParry")
+    pcall(npc.setBumpDone, npc, false)
+    npc:setVariable("BumpAnimFinished", false)
+end
+
+function PS.npcBlocks(attacker, npc, weapon)
+    if not attacker or not npc or npc == attacker or not instanceof(npc, "IsoZombie") or not photonStrike(weapon) then
+        return false
+    end
+    local now = getTimestampMs()
+    local last = npcBlocked[npc]
+    if last and last.attacker == attacker and now - last.at <= NPC_BLOCK_MS then return last.blocked end
+    local f = npc:getForwardDirection()
+    local blocked = PS.deflectSetting("BlockPhotonSwords") and not npc:isDead() and not npc:isOnFloor()
+        and PS.isIgnited(npc:getPrimaryHandItem()) and (isServer() or PS.isNpcLit(npc))
+        and faces(npc, attacker, f:getX(), f:getY(), ARC)
+        and ZombRand(100) < PS.deflectSetting(instanceof(attacker, "IsoPlayer") and "NpcBlockChance" or "NpcVsNpcBlockChance")
+    npcBlocked[npc] = { attacker = attacker, at = now, blocked = blocked }
+    if blocked then PS.playNpcParry(npc) end
+    if blocked and isServer() then
+        sendServerCommand("PhotonSword", "npcBlock", { id = npc:getOnlineID() })
+    elseif blocked and PS.showNpcBlock then
+        PS.showNpcBlock(npc)
+    end
+    return blocked
+end
+
+if Events.OnWeaponHitCharacter then
+    -- A player's photon sword on a player: settled with authority over the defender's guard.
+    if AUTH then
+        Events.OnWeaponHitCharacter.Add(function(attacker, target, weapon)
+            if not target or not instanceof(target, "IsoPlayer") or not photonStrike(weapon) then return end
+            if PS.meleeGuardHandled(attacker, target) then return end
+            if PS.judgeBlow(attacker, target, weapon) then target:setAvoidDamage(true) end
+        end)
+    end
+    -- A player's photon sword on an NPC: settled where the hit is (the attacker's client, or single
+    -- player). Project A-Life weighs its NPCs' hits itself and asks PS.npcBlocks too.
+    if not isServer() then
+        Events.OnWeaponHitCharacter.Add(function(attacker, target, weapon)
+            if not target or not instanceof(target, "IsoZombie") or not attacker or not instanceof(attacker, "IsoPlayer")
+                    or not IsoPlayer.isLocalPlayer(attacker) then
+                return
+            end
+            if PS.npcBlocks(attacker, target, weapon) then target:setAvoidDamage(true) end
+        end)
+    end
+end
+
 -- Player fire: the server (or single player) settles each bullet that hits a player.
 if AUTH and Events.OnWeaponHitCharacter then
     Events.OnWeaponHitCharacter.Add(function(attacker, target, weapon, damage)
@@ -230,12 +359,12 @@ function PS.judgeLocalShot(attacker, player, weapon, damage)
 end
 
 -- The server's side of PS.judgeLocalShot: settle the guard and let the other clients see it.
-local function settle(player, drain, share)
+local function settle(player, drain, share, parry)
     if type(drain) ~= "number" or drain ~= drain or drain < 0 or drain > 300 then return end
     if share ~= nil and (type(share) ~= "number" or share ~= share or share <= 0 or share > 1) then return end
     local now = getTimestampMs()
     if not PS.guardUp(player, now) then return end
-    if PS.drainGuard(player, drain, now) then announce(player, share, true) end
+    if PS.drainGuard(player, drain, now) then announce(player, share, true, parry == true and share == 1) end
 end
 
 local lastDeflect = setmetatable({}, { __mode = "k" })
@@ -244,7 +373,7 @@ Events.OnClientCommand.Add(function(module, command, player, args)
     local now = getTimestampMs()
     if lastDeflect[player] and now - lastDeflect[player] < 100 then return end
     lastDeflect[player] = now
-    settle(player, args.drain, args.share)
+    settle(player, args.drain, args.share, args.parry)
 end)
 
 return PS

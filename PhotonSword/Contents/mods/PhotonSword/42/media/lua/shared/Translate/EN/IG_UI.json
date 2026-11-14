@@ -3,7 +3,7 @@
     "IGUI_PS_NoPower": "No power",
     "IGUI_PS_ExtinguishFirst": "Extinguish the blade first",
     "IGUI_PS_NoBetterBattery": "No fresher battery",
-    "IGUI_PS_LowPower": "Photon Sword power low: %1%",
+    "IGUI_PS_LowPower": "Photon Sword power low: %1%%",
     "IGUI_PS_CuttingOn": "Photon Sword cutting: on",
     "IGUI_PS_CuttingOff": "Photon Sword cutting: off",
     "IGUI_PS_CuttingDisabled": "Photon Sword cutting is disabled in sandbox options",

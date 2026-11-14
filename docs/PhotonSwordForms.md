@@ -15,7 +15,7 @@ attacks, its block, and deflecting gunfire.
 | Senator's Martial Arms | `SenatorMartialArms` | Workshop 3823941212 |
 | Senator Martial Arts Core | `SenatorMartialArtsCore` | Workshop 3812456765 (this mod's Lua requires `SMA_Core` directly) |
 
-Game version: Build 42.20 or later (Senator's mods require 42.20).
+Game version: Build 42.22 or later (the latest stable release; Senator's mods need 42.20).
 
 ## Forms
 
@@ -73,7 +73,16 @@ staff, and so on) from a per-art definition plus shared machinery in its `SWMA_*
   `PSF_Block`: a center guard, both hands on the hilt in front of the body's middle and the blade
   held vertical, breathing in a 2.6-second loop (chest and shoulders rise, the body settles on
   planted feet, the sword rides along). The guard stance requires `PSFBlock=false`, so raising
-  the guard switches nodes immediately rather than on the next move.
+  the guard switches nodes immediately rather than on the next move. When the block stops a
+  blow, it plays `PSF_BlockParry` once (0.5 s): the blow knocks the blade's tip toward the off
+  side, the hands recoil, and the body rocks back and sinks, then the guard comes back to center
+  (`PSFParry`, set while the clip plays). That's every blow the block stops: a photon sword strike
+  Photon Sword settles (an NPC's, from the patch mods) and any melee blow Martial Arts Core
+  settles itself (another player's). Core's blocks are told from its other guard drains by the
+  guard's `lastHit` stamp (`PSF.newCoreBlock`): a new stamp made as a melee blow struck the
+  player, and not one Photon Sword made (bullets, shotgun soaks) or a zombie pushed off the guard.
+  Only the side settling the blow can tell, so in multiplayer the server sends every client a
+  `parry` (`PSF_Server.lua`), and the blocker sees it a round trip after the block.
 - **Deflecting bullets** (`shared/PhotonSwordForms/PSF_Deflect.lua`): Photon Sword's deflect
   (`PS_Deflect.lua`: the rolls, shotgun soaks, striking back, multiplayer sync, and its sandbox and
   mod options) with a Form's guard in place of its ready stance. For a player whose active Form can
@@ -83,8 +92,11 @@ staff, and so on) from a per-art definition plus shared machinery in its `SWMA_*
   own block drain (`SMA.guardDrain`, lowered by Martial Arts level, scaled by Guard Drain from
   Gunfire). One the meter can't pay for breaks the guard and the shot lands; a soaked blast pays that
   share of the drain. It does this by replacing Photon Sword's guard hooks (`PS.guardUp`,
-  `PS.guardFacing`, `PS.guardSkill`, `PS.guardDrain`, `PS.drainGuard`, `PS.guardPays`) for those
-  players. Everyone else keeps Photon Sword's rules. Bandits and Project A-Life gunfire is covered by
+  `PS.guardFacing`, `PS.guardSkill`, `PS.guardDrain`, `PS.drainGuard`, `PS.guardPays`, and for
+  blocking photon swords `PS.blockChance`, which is 100: the block always holds while the meter
+  pays) for those players. Another player's photon sword strike is left to Core's own block, which
+  already takes any melee hit between players (`PS.meleeGuardHandled`); an NPC's goes through Photon
+  Sword's block and drains the meter by Core's rule. Everyone else keeps Photon Sword's rules. Bandits and Project A-Life gunfire is covered by
   Photon Sword's patch mods, which work with or without this mod.
 - **Stance**: between moves, a player with an enabled Form holds the ignited sword in Photon Sword's
   stance (`PS_Stance.lua`: the rest, walks, ready stance, and its beckons). The block outranks it,
@@ -117,9 +129,11 @@ staff, and so on) from a per-art definition plus shared machinery in its `SWMA_*
 - **Admin**: `PSF_Forms.lua` adds each Form to Senator's table of arts (`SWMA_TrainingStyles`),
   so Senator's admin window can set a Form's learned state and mastery. They're added after
   Senator registers its practice Exercises, so Forms get no Exercise.
-- **Combat** (`client/PhotonSwordForms/`): the combo driver, swing and server-command events, and
-  footwork during moves, modeled on `SWMK_Combos.lua`, `SWMK_Combat.lua`, and
-  `SWMA_PlayerMovement.lua`, and installed on every Form.
+- **Combat** (`client/PhotonSwordForms/`): the combo driver (`PSF_Combos.lua`), swing and
+  server-command events (`PSF_Combat.lua`), and footwork during moves (`PSF_Movement.lua`),
+  installed on every Form. They work as Senator's `SWMK_Combos.lua`, `SWMK_Combat.lua`, and
+  `SWMA_PlayerMovement.lua` do, with the same timings and vanilla's walking speeds, so Forms
+  chain and move like Senator's arts.
 - **Server** (`server/PhotonSwordForms/`): per-Form state sync, move approval and relay, and XP on
   hit. Also active-Form selection and manual loot.
 - **Manuals** (`scripts/item_photonswordforms.txt`): 120-page magazines with this mod's own icon,
@@ -162,7 +176,7 @@ Senator's shared machinery has a few closed lists. This is how the mod works aro
 |---|---|---|
 | Damage per Form Mastery Level (%) | 10 | Each mastery level of the Form adds this to the sword's damage in it (+50% at full mastery), on top of Senator's Attack Damage multiplier. |
 | Extinguish While Dodging | on | A dodge puts a lit blade out for the leap; off keeps it lit. |
-| Guard Drain from Gunfire | 1.0 | Scales the guard meter's drain from deflects and soaks; 0 never drains. |
+| Guard Drain from Gunfire and Blocks | 1.0 | Scales the guard meter's drain from deflects, soaks, and blocked NPC photon sword strikes; 0 never drains. |
 
 **Mod options** (Options > Mods > Photon Sword Forms, `client/PhotonSwordForms/PSF_Options.lua`):
 per-player client settings.
@@ -200,6 +214,8 @@ Known gaps to work on next:
 
 - The repo's `./deploy.sh` copies this mod to `~/Zomboid/mods/PhotonSwordForms`, along with Photon
   Sword and the patch mods. It also copies in the dev kit; `./deploy.sh --release` leaves it out.
+- **Releasing:** `./release.sh` checks the mod and builds it into `releases/` for the Workshop
+  uploader, without the tools or dev kit. See the [README](../README.md#releasing-to-the-steam-workshop).
 - **Dev kit** (`dev/PSF_DevKit.lua`, outside the mod folder so it never ships): each character
   gets it once on spawn. It teaches every Form at mastery 5 and adds their manuals, and sets Martial
   Arts to 10. The sword comes from Photon Sword's kit (`dev/PS_DevKit.lua`: an
@@ -216,7 +232,8 @@ Known gaps to work on next:
   `LANDING`, the torso leans by `LEAN`, and the off arm swings out by `OFF_ARM`. Each key puts the
   weapon bone back on the sword hand (it hangs off the root), and the tool prints the root's
   travel, how far the hilt slips, and the lowest foot. Re-run `gen_forms_animsets.py` after renaming one.
-- `tools/anim/make_block.py` builds `common/media/anims_X/PSF/PSF_Block.x`, with Photon Sword's
+- `tools/anim/make_block.py` builds `common/media/anims_X/PSF/PSF_Block.x` (and its one-pass parry,
+  `PSF_BlockParry.x`: `PARRY_*`), with Photon Sword's
   animation library (`tools/anim/xfile.py`, `tools/anim/animlib.py`). Clips must live under
   `common/`: the game skips a mod's `42/media/anims_X` entirely unless `common/media/anims_X`
   exists (`ModelManager.loadHumanAnimations`), which is why Senator ships an empty
@@ -228,9 +245,10 @@ Known gaps to work on next:
   the left arm comes in under the right hand instead of wrapping around it).
 - The stance clips and their tools (`make_ready.py`, `make_rest.py`, `make_aim_beckon.py`,
   `make_guard.py`, `render.py`) are Photon Sword's; see the [README](../README.md#stance-animation-tools).
-- `blender -b --python tools/anim/poster.py -- PS_Ready.x PhotonSword_Hilt.x PhotonSword_Blade.x OUT.png
-  --size 256 [--icon ICON.png]` renders the poster art (the ready stance with a glowing blade) for
-  `42/poster.png` and the Workshop's `preview.png`, and with `--icon` a 32x32 close-up for `42/icon.png`.
+- `python3 tools/gen_art.py` paints the art every mod in the repo shares: a stylized ignited photon
+  sword for `preview.png` (256x256), `42/poster.png` (256x256), and `42/icon.png` (32x32). See the
+  [README](../README.md). `tools/anim/poster.py` still renders a character in the ready stance with
+  Blender, if you want that look instead.
   Pass absolute output paths; Blender treats relative ones as relative to the blend file.
 - `tools/gen_forms_animsets.py` rewrites the move and block AnimSets from its `MOVES`, `STANCES`, and `STATES` tables. Re-run it
   after changing them.
@@ -240,6 +258,23 @@ Known gaps to work on next:
 
 ## Credits
 
-The Forms' Lua follows Senator's katana art closely. The attack animation clips are Senator's,
-loaded from Senator's mods. The block clip, manual art, and everything else are this mod's own,
-and the stance is Photon Sword's (MIT).
+Photon Sword Forms is built on **Senator's Martial Arms** and **Senator Martial Arts Core** by
+Senator, and plugs into their machinery (progression, moving attacks, the move shuffle, dodges,
+guard, and the martial arts window). The attack animation clips are Senator's, loaded from
+Senator's mods; none are copied. The block clips, manual art, sounds, and stance are this mod's
+own; the block and dodge clips are built from vanilla's animations and carry vanilla's skeleton
+and mesh, under The Indie Stone's Terms (see the README's
+[Third-party content](../README.md#third-party-content)). The manual's text is set in DejaVu.
+
+Some of this mod's Lua is adapted from Senator's katana art, because the parts it would reuse are
+written for one art and can't be called for a Form: `PSF_Core.lua`, `PSF_Sequence.lua`,
+`PSF_Server.lua`, `PSF_Combat.lua`, and `PSF_Form1.lua` follow `SWMK_Core.lua`,
+`SWMK_Sequence.lua`, `SWMK_Server.lua`, and `SWMK_Combat.lua`, and `PSF_Tab.lua` follows the layout
+of `SWMA_WeaponWindow.lua`. Those adapted parts are Senator's work. `PSF_Combos.lua` and
+`PSF_Movement.lua` are this mod's own, written to behave as Senator's do.
+
+## License
+
+Released under the [MIT License](../LICENSE), like the rest of this repo, except for the parts
+adapted from Senator's code (listed under Credits), which remain Senator's, and The Indie Stone's
+content in the block and dodge clips; neither is covered by it. Senator's mods, which this one requires and whose attack clips it loads, are not part of it.

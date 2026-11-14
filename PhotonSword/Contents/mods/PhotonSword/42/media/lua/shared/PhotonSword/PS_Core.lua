@@ -205,6 +205,28 @@ function PS.readyStance(playerObj)
         and not playerObj:getVariableBoolean("PerformingAction")
 end
 
+-- A function's results, kept with their count (nils too), for a wrapper that runs code after the
+-- function it wraps and returns everything it did: unpack(results, 1, results.n).
+function PS.pack(...)
+    return { n = select("#", ...), ... }
+end
+
+-- Parries: when a character last blocked a photon sword's strike, so its parry plays while it's
+-- fresh. A player's guard is noted on each client that shows the block (PS_DeflectShow.lua) and
+-- read by the stances (PS_Stance.lua, and Photon Sword Forms' block, which also notes Martial Arts
+-- Core's blocks); an NPC's where its block is decided (PS.playNpcParry, PS_Deflect.lua).
+PS.parries = PS.parries or setmetatable({}, { __mode = "k" })
+
+function PS.noteParry(playerObj)
+    PS.parries[playerObj] = getTimestampMs()
+end
+
+-- Whether playerObj blocked a photon sword's strike in the last ms milliseconds.
+function PS.parrying(playerObj, ms)
+    local at = PS.parries[playerObj]
+    return at ~= nil and getTimestampMs() - at < ms
+end
+
 -- The stance (client/PhotonSword/PS_Stance.lua): how a character holds an ignited sword. Another
 -- mod whose own animation takes the sword over (a block, a weapon art's stance) adds a yield:
 -- while fn(playerObj) returns true, the stance stays out of that player's animation, the ready
@@ -296,4 +318,118 @@ function PS.swap(character, item, ignite, color)
         sendEquip(character)
     end
     return newItem
+end
+
+-- NPCs from other mods (Bandits, Project A-Life) are zombies underneath. Their patch mods arm
+-- them through these helpers, so every NPC mod gets the same rarity roll, blade colors, and blade.
+
+-- A stable roll in [0, 100) from a string, the same on every machine and every time that NPC is
+-- rebuilt, so an NPC keeps (or never gets) its sword.
+function PS.stableRoll(key)
+    local hash = 0
+    key = tostring(key)
+    for i = 1, #key do
+        hash = (hash * 31 + string.byte(key, i)) % 2147483647
+    end
+    return hash % 10000 / 100
+end
+
+-- An NPC's blade color from a patch's NPC Blade Color sandbox option: 1 is Random (stable per
+-- NPC), 2 and up pick PS.BLADE_COLORS in order.
+function PS.npcBladeColor(key, choice)
+    local fixed = PS.BLADE_COLORS[(tonumber(choice) or 1) - 1]
+    if fixed then return fixed end
+    return PS.BLADE_COLORS[math.floor(PS.stableRoll(tostring(key) .. ":color")) % #PS.BLADE_COLORS + 1]
+end
+
+-- Readies a fresh blade an NPC holds, swings, or drops, as igniting readies a player's: the
+-- damage multiplier and its color. No battery: one is fitted when a player picks it up
+-- (PS_PowerDrain.lua). Calling it again on the same blade does nothing.
+function PS.issueNpcBlade(blade, color)
+    if not PS.isIgnited(blade) then return blade end
+    local data = blade:getModData()
+    if data.PS_npcIssued then return blade end
+    data.PS_npcIssued = true
+    local mult = PS.getDamageMultiplier()
+    blade:setMinDamage(blade:getMinDamage() * mult)
+    blade:setMaxDamage(blade:getMaxDamage() * mult)
+    if PS.COLORS[color or ""] then data.PS_color = color end
+    applyBladeColor(blade)
+    return blade
+end
+
+-- NPCs hold their sword dark (the hilt's model) and light it only for a fight: client/PhotonSword/
+-- PS_NpcBlades.lua lights it while PS.npcInCombat(zombie) and puts it out once the fight is over.
+-- The item stays the blade throughout, so the NPC mod's own AI never sees its weapon change.
+-- PS.npcLit[zombie] is true while lit, on each client (the server never lights one).
+PS.npcLit = PS.npcLit or setmetatable({}, { __mode = "k" })
+PS.npcCombatSources = PS.npcCombatSources or {}
+
+-- A patch tells Photon Sword when its NPCs fight: fn(zombie) returns true while that NPC is in, or
+-- closing in on, a fight.
+function PS.addNpcCombatSource(fn)
+    table.insert(PS.npcCombatSources, fn)
+end
+
+-- Whether an NPC is fighting: attacking now, or any patch's combat source says so.
+function PS.npcInCombat(zombie)
+    if zombie:isAttacking() or zombie:isPerformingAttackAnimation() then return true end
+    for _, fn in ipairs(PS.npcCombatSources) do
+        if fn(zombie) then return true end
+    end
+    return false
+end
+
+function PS.isNpcLit(zombie)
+    return PS.npcLit[zombie] == true
+end
+
+-- Calls fn(zombie, zombie) for every NPC in the loaded cell holding a photon sword, lit or not.
+-- The zombie list is rescanned at most every NPC_SCAN_MS.
+local NPC_SCAN_MS = 500
+local npcHolders, npcScannedMs = {}, 0
+
+function PS.forEachNpcHolder(fn)
+    local now = getTimestampMs()
+    if now - npcScannedMs >= NPC_SCAN_MS then
+        npcScannedMs = now
+        npcHolders = {}
+        local cell = getCell()
+        local zombies = cell and cell:getZombieList()
+        for i = 0, (zombies and zombies:size() or 0) - 1 do
+            local zombie = zombies:get(i)
+            if zombie and PS.isIgnited(zombie:getPrimaryHandItem()) then
+                npcHolders[#npcHolders + 1] = zombie
+            end
+        end
+    end
+    local seen = {}
+    for _, zombie in ipairs(npcHolders) do
+        if not zombie:isDead() and PS.isIgnited(zombie:getPrimaryHandItem()) then
+            seen[zombie] = true
+            fn(zombie, zombie)
+        end
+    end
+    return seen
+end
+
+-- Calls fn(zombie, zombie) for every NPC whose sword is lit (client effects: light, hum, no blood).
+function PS.forEachNpcWielder(fn)
+    local seen = {}
+    PS.forEachNpcHolder(function(zombie)
+        if PS.isNpcLit(zombie) then
+            seen[zombie] = true
+            fn(zombie, zombie)
+        end
+    end)
+    return seen
+end
+
+-- PS.forEachPlayer, then PS.forEachNpcWielder; returns every key visited.
+function PS.forEachWielder(fn)
+    local seen = PS.forEachPlayer(fn)
+    for key in pairs(PS.forEachNpcWielder(fn)) do
+        seen[key] = true
+    end
+    return seen
 end

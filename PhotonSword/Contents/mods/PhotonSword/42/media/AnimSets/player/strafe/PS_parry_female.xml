@@ -1,0 +1,18 @@
+<animNode>
+  <m_Name>PS_parry_female</m_Name>
+  <m_AnimName>PS_Parry</m_AnimName>
+  <m_Priority>260</m_Priority>
+  <m_ConditionPriority>112</m_ConditionPriority>
+  <m_Looped>false</m_Looped>
+  <m_StopAnimOnExit>true</m_StopAnimOnExit>
+  <m_maxTorsoTwist>0</m_maxTorsoTwist>
+  <m_BlendTime>0.08</m_BlendTime>
+  <m_BlendOutTime>0.22</m_BlendOutTime>
+  <m_useDeferredMovement>false</m_useDeferredMovement>
+  <m_SyncTrackingEnabled>false</m_SyncTrackingEnabled>
+  <m_Conditions><m_Name>Weapon</m_Name><m_Type>STRING</m_Type><m_Value>2handed</m_Value></m_Conditions>
+  <m_Conditions><m_Name>PSFemale</m_Name><m_Type>BOOL</m_Type><m_Value>true</m_Value></m_Conditions>
+  <m_Conditions><m_Name>PSParry</m_Name><m_Type>BOOL</m_Type><m_Value>true</m_Value></m_Conditions>
+  <m_Conditions><m_Name>AimFloorAnim</m_Name><m_Type>BOOL</m_Type><m_Value>false</m_Value></m_Conditions>
+  <m_Conditions><m_Name>PSWalking</m_Name><m_Type>BOOL</m_Type><m_Value>false</m_Value></m_Conditions>
+</animNode>

@@ -1,8 +1,8 @@
 {
-    "ContextMenu_PS_Ignite": "Ignite (%1% power)",
+    "ContextMenu_PS_Ignite": "Ignite (%1%% power)",
     "ContextMenu_PS_Extinguish": "Extinguish",
     "ContextMenu_PS_InsertBattery": "Insert Battery",
-    "ContextMenu_PS_SwapBattery": "Swap Battery (%1% battery)",
-    "ContextMenu_PS_RemoveBattery": "Remove Battery (%1% power)",
+    "ContextMenu_PS_SwapBattery": "Swap Battery (%1%% battery)",
+    "ContextMenu_PS_RemoveBattery": "Remove Battery (%1%% power)",
     "ContextMenu_PS_NoBattery": "Requires a battery with charge."
 }

@@ -1,91 +1,111 @@
--- Footwork during photon sword Form moves (follows SWMA_PlayerMovement.lua, whose list of arts
--- is closed to other mods). While a local player's move plays, the clip's root motion is
--- switched off; a moving attack instead walks the player along their movement input at the
--- art's footwork speed. Standing-only moves (or any move started standing) keep them in place.
+-- Footwork during photon sword Form moves. Senator's arts get this from SWMA_PlayerMovement.lua,
+-- whose list of arts is closed to other mods, so Forms have their own.
+-- While a local player's move plays, the player holds a lease: the clip's root motion is switched
+-- off, and a moving attack instead walks the player along their movement input at the Form's
+-- footwork speed (SWMAFootworkSpeed, set by Senator's progression). A move started standing
+-- keeps them in place. The lease ends a moment after the move does, and puts root motion back as
+-- it was.
 
+require "PhotonSword/PS_Core"
+local PS = PhotonSword
 local PSF = require "PhotonSwordForms/PSF_Forms"
 
-local leases = setmetatable({}, { __mode = "k" })
-local delta = Vector2.new()
-local motionScale = 0.76
+local LINGER_MS = 160   -- the lease outlasts the move by this, so chained moves don't jolt between them
 
-local function restore(player, lease)
-    player:setDeferredMovementEnabled(lease.enabled)
+-- Vanilla's walking speeds while aiming (distance per frame at 30 fps), straight ahead, on the
+-- diagonal, and sideways, walking and backpedaling, and the scale Senator's arts move at.
+local WALK = { ahead = 0.590551, diagonal = 0.393701, side = 0.417323 }
+local BACKPEDAL = { ahead = 0.295276, diagonal = 0.208661, side = 0.417323 }
+local SCALE = 1.5 * 0.76 * 0.8
+
+local leases = setmetatable({}, { __mode = "k" })   -- player -> { form, deferred, standing, endedAt }
+local input = Vector2.new()
+
+-- The speed of a step along the unit direction (x, y) in world space: vanilla's, blended between
+-- its straight, diagonal, and sideways speeds by how far the step is from the player's facing.
+local function stepSpeed(player, x, y)
+    local f = player:getForwardDirection()
+    local ahead = x * f:getX() + y * f:getY()
+    local across = math.abs(x * f:getY() - y * f:getX())
+    local along = math.abs(ahead)
+    local speeds = (ahead < 0 and player:getVariableBoolean("SlowingMovement")) and BACKPEDAL or WALK
+    local a, b
+    if along >= across then
+        local w = across / (0.55 * along + 0.45 * across)
+        a, b = speeds.diagonal * w, speeds.ahead + (speeds.diagonal - speeds.ahead) * w
+    else
+        local w = along / (0.55 * across + 0.45 * along)
+        a, b = speeds.side + (speeds.diagonal - speeds.side) * w, speeds.diagonal * w
+    end
+    return math.sqrt(a * a + b * b) * SCALE
+end
+
+local function release(player)
+    local lease = leases[player]
+    if not lease then return end
+    player:setDeferredMovementEnabled(lease.deferred)
     leases[player] = nil
 end
 
--- Distance per frame for movement input (x, y), matching vanilla strafing speeds.
-local function inputSpeed(player, x, y)
-    local f = player:getForwardDirection()
-    local forward = x * f:getX() + y * f:getY()
-    local side = math.abs(x * f:getY() - y * f:getX())
-    local along = math.abs(forward)
-    local slow = forward < 0 and player:getVariableBoolean("SlowingMovement")
-    local straight = slow and 0.295276 or 0.590551
-    local diagonal = slow and 0.208661 or 0.393701
-    local weight, sx, sy
-    if along >= side then
-        weight = side / (0.55 * along + 0.45 * side)
-        sx, sy = diagonal * weight, straight * (1 - weight) + diagonal * weight
-    else
-        weight = along / (0.55 * side + 0.45 * along)
-        sx, sy = 0.417323 * (1 - weight) + diagonal * weight, diagonal * weight
-    end
-    return math.sqrt(sx * sx + sy * sy) * 1.5 * motionScale * 0.8
+local function take(player, W)
+    local lease = leases[player] or { deferred = player:isDeferredMovementEnabled() }
+    leases[player] = lease
+    lease.form, lease.endedAt = W, nil
+    lease.standing = not player:getVariableBoolean("PSFAttackMoving")
+    player:setDeferredMovementEnabled(false)
 end
 
-local function update(player)
-    local lease = leases[player]
-    if not lease then return end
-    if player:isDead() or player:getVehicle() or not IsoPlayer.isLocalPlayer(player) or not lease.form.eligible(player) then
-        restore(player, lease); return
+local function leaseOver(player, lease)
+    if player:isDead() or player:getVehicle() or not IsoPlayer.isLocalPlayer(player)
+            or not lease.form.eligible(player) then
+        return true
     end
-    if not player:isAttacking() then
-        if not lease.ending then lease.ending = getTimestampMs() end
-        if getTimestampMs() - lease.ending >= 160 then restore(player, lease); return end
-    else
-        lease.ending = nil
+    if player:isAttacking() then
+        lease.endedAt = nil
+        return false
     end
-    player:setDeferredMovementEnabled(false)
-    if lease.stationary or not lease.enabled or not player:pressedMovement(false) or not player:isAiming() then return end
-    player:getInputMoveVector(delta)
-    local x, y = delta:getY() + delta:getX(), delta:getY() - delta:getX()
+    lease.endedAt = lease.endedAt or getTimestampMs()
+    return getTimestampMs() - lease.endedAt >= LINGER_MS
+end
+
+-- Walks the player one frame along their movement input.
+local function step(player)
+    player:getInputMoveVector(input)
+    -- The input is in screen space; the isometric view turns it 45 degrees from the world's.
+    local x, y = input:getY() + input:getX(), input:getY() - input:getX()
     if player:isAnimatingBackwards() then x, y = -x, -y end
     local length = math.sqrt(x * x + y * y)
     if length < 0.0001 then return end
     x, y = x / length, y / length
     local footwork = math.max(0, player:getVariableFloat("SWMAFootworkSpeed", 0))
-    local distance = inputSpeed(player, x, y) * footwork * getGameTime():getMultiplier() / 30
+    local distance = stepSpeed(player, x, y) * footwork * getGameTime():getMultiplier() / 30
     player:moveUnmodded(x * distance, y * distance)
 end
 
-local function install(W)
+local function update(player)
+    local lease = leases[player]
+    if not lease then return end
+    if leaseOver(player, lease) then release(player); return end
+    player:setDeferredMovementEnabled(false)
+    if not lease.standing and lease.deferred and player:pressedMovement(false) and player:isAiming() then
+        step(player)
+    end
+end
+
+for _, W in ipairs(PSF.forms) do
     -- Called by SWMA_MovingAttack's cancelAttack.
     function W.releaseMovement(player)
         local lease = leases[player]
-        if lease and lease.form == W then restore(player, lease) end
+        if lease and lease.form == W then release(player) end
     end
 
     local present = W.present
     W.present = function(player, ...)
-        local accepted = present(player, ...)
-        if accepted and IsoPlayer.isLocalPlayer(player) then
-            local lease = leases[player]
-            if not lease then
-                lease = { enabled = player:isDeferredMovementEnabled() }
-                leases[player] = lease
-            end
-            lease.form, lease.ending = W, nil
-            lease.stationary = not player:getVariableBoolean("PSFAttackMoving")
-            player:setDeferredMovementEnabled(false)
-        end
-        return accepted
+        local results = PS.pack(present(player, ...))
+        if results[1] and IsoPlayer.isLocalPlayer(player) then take(player, W) end
+        return unpack(results, 1, results.n)
     end
 end
 
-for _, W in ipairs(PSF.forms) do install(W) end
-
 Events.OnPlayerUpdate.Add(update)
-Events.OnPlayerDeath.Add(function(player)
-    if leases[player] then restore(player, leases[player]) end
-end)
+Events.OnPlayerDeath.Add(release)

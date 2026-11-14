@@ -13,8 +13,8 @@ local KEEP_MS = 3000  -- past the longest dodge and Core's XP window (its durati
 local kept = setmetatable({}, { __mode = "k" })
 
 local weaponDodgeStyle = SMA.weaponDodgeStyle
-function SMA.weaponDodgeStyle(player)
-    local style = weaponDodgeStyle(player)
+function SMA.weaponDodgeStyle(player, ...)
+    local style = weaponDodgeStyle(player, ...)
     if style then return style end
     local k = player and kept[player]
     if k and getTimestampMs() < k.ends and PS.isPhotonSword(player:getPrimaryHandItem()) then return k.style end
@@ -30,28 +30,29 @@ end
 -- The local player's dodge (startDodge) and the server's or single player's XP check (beginDodgeXp)
 -- each pick the style; keep it at both.
 local startDodge = SMA.startDodge
-function SMA.startDodge(player, side)
+function SMA.startDodge(player, ...)
     keep(player)
-    return startDodge(player, side)
+    return startDodge(player, ...)
 end
 
 local beginDodgeXp = SMA.beginDodgeXp
-function SMA.beginDodgeXp(player, side, sequence)
+function SMA.beginDodgeXp(player, ...)
     if not (kept[player] and getTimestampMs() < kept[player].ends) then keep(player) end
-    return beginDodgeXp(player, side, sequence)
+    return beginDodgeXp(player, ...)
 end
 
 -- The dodge is over once Core settles its XP (the server, or single player) or a multiplayer client
 -- stops it. The server checks a "position" result again later, so the style stays for that.
 local finishDodgeXp = SMA.finishDodgeXp
-function SMA.finishDodgeXp(player, sequence, completed)
-    local ok, reason = finishDodgeXp(player, sequence, completed)
-    if reason ~= "position" then kept[player] = nil end
-    return ok, reason
+function SMA.finishDodgeXp(player, ...)
+    local results = PS.pack(finishDodgeXp(player, ...))
+    if results[2] ~= "position" then kept[player] = nil end
+    return unpack(results, 1, results.n)
 end
 
 local stopDodge = SMA.stopDodge
-function SMA.stopDodge(player, completed)
-    stopDodge(player, completed)
+function SMA.stopDodge(player, ...)
+    local results = PS.pack(stopDodge(player, ...))
     if isClient() then kept[player] = nil end
+    return unpack(results, 1, results.n)
 end

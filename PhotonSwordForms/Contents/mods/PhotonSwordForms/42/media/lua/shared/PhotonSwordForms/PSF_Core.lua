@@ -26,6 +26,39 @@ PSF.module = "PhotonSwordForms"
 PSF.forms = {}  -- Forms in display order
 PSF.byId = {}
 
+local PARRY_MS = 450   -- PSF_BlockParry, less its blend back
+local CORE_BLOCK_MS = 300   -- how recent Core's last block must be to parry it
+
+-- Martial Arts Core's block settling a blow itself (another player's, which Photon Sword leaves to
+-- it): Core stamps the guard's lastHit as it settles the blow, in the blow's OnWeaponHitCharacter.
+-- It also stamps it for a zombie pushed off the guard, and Photon Sword's own drains (bullets,
+-- shotgun soaks, NPC strikes) stamp it through PSF_Deflect.lua, which records those stamps in
+-- PSF.photonStamps; so a block is a new stamp made as a melee blow struck the player that isn't
+-- Photon Sword's. Only where the blow is settled (single player, or the server, which tells the
+-- clients: PSF_Server.lua's "parry") can the stamps be told apart: the blocker's own client gets
+-- the same stamp from Core for any drain. seen: the caller's own record of the stamps it has read.
+PSF.photonStamps = setmetatable({}, { __mode = "k" })
+PSF.struckAt = setmetatable({}, { __mode = "k" })   -- when a melee blow last struck each player
+if Events.OnWeaponHitCharacter then
+    Events.OnWeaponHitCharacter.Add(function(attacker, target, weapon)
+        if target and instanceof(target, "IsoPlayer") and weapon and instanceof(weapon, "HandWeapon")
+            and not weapon:isRanged() then
+            PSF.struckAt[target] = getTimestampMs()
+        end
+    end)
+end
+
+function PSF.newCoreBlock(player, seen)
+    local at = SMA.guardState(player).lastHit
+    if seen[player] == at then return false end
+    seen[player] = at
+    if type(at) ~= "number" or at <= 0 or getTimestampMs() - at >= CORE_BLOCK_MS then return false end
+    if PSF.photonStamps[player] == at then return false end
+    local struck = PSF.struckAt[player]
+    return struck ~= nil and math.abs(at - struck) <= 50
+end
+local seenHere = setmetatable({}, { __mode = "k" })
+
 -- Art-wide player state, saved in player modData: which Form is active.
 function PSF.state(player)
     local data = player:getModData()
@@ -164,7 +197,7 @@ function PSF.define(def)
     end
 
     function W.clear(player)
-        for _, name in ipairs({ "PSFHolding", "PSFActive", "PSFWalking", "PSFFemale", "PSFBlock" }) do
+        for _, name in ipairs({ "PSFHolding", "PSFActive", "PSFWalking", "PSFFemale", "PSFBlock", "PSFParry" }) do
             player:setVariable(name, false)
         end
         for _, name in ipairs({ "PSFForm", "PSFMove", "PSFCompleted" }) do player:setVariable(name, "") end
@@ -177,7 +210,15 @@ function PSF.define(def)
         player:setVariable("PSFFemale", player:isFemale())
         player:setVariable("PSFWalking", player:isPlayerMoving())
         -- SMAGuard is Martial Arts Core's guard (SMA_Guard.lua), raised with its Block key.
-        player:setVariable("PSFBlock", W.guard and player:getVariableBoolean("SMAGuard"))
+        local block = W.guard and player:getVariableBoolean("SMAGuard")
+        player:setVariable("PSFBlock", block)
+        -- Just after the block stopped a blow: its parry. Photon Sword notes the photon sword strikes
+        -- it settles (PS.noteParry); Core's own blocks are noted here in single player, and from
+        -- the server's "parry" in multiplayer.
+        if block and not isClient() and not isServer() and PSF.newCoreBlock(player, seenHere) then
+            PS.noteParry(player)
+        end
+        player:setVariable("PSFParry", block and PS.parrying(player, PARRY_MS))
         return true
     end
 
@@ -247,9 +288,9 @@ end
 
 -- Finishing a Form's manual teaches that Form.
 local readComplete = ISReadABook.complete
-function ISReadABook:complete()
-    local result = readComplete(self)
-    if result == true and not isClient() and not self.forceStopped and self.item and self.character
+function ISReadABook:complete(...)
+    local results = PS.pack(readComplete(self, ...))
+    if results[1] == true and not isClient() and not self.forceStopped and self.item and self.character
         and self.character:getInventory():containsRecursive(self.item)
         and self.item:getNumberOfPages() > 0
         and self.item:getAlreadyReadPages() >= self.item:getNumberOfPages() then
@@ -257,16 +298,16 @@ function ISReadABook:complete()
             if self.item:getFullType() == W.book then W.learn(self.character) end
         end
     end
-    return result
+    return unpack(results, 1, results.n)
 end
 
 -- Weapon dodges: an eligible Form dodges with Pak Mei's sidesteps, as Senator's arts do.
 local dodgeStyle = { id = "psf", weaponDodge = true, dodges = SMA.styles.pakmei.dodges }
 local weaponDodgeStyle = SMA.weaponDodgeStyle
-function SMA.weaponDodgeStyle(player)
+function SMA.weaponDodgeStyle(player, ...)
     local W = PSF.activeForm(player)
     if W and W.eligible(player) then return dodgeStyle end
-    return weaponDodgeStyle(player)
+    return weaponDodgeStyle(player, ...)
 end
 
 -- Guard: Martial Arts Core's block (SMA_Guard.lua) is for unarmed styles only. A Form with
@@ -279,19 +320,19 @@ end
 PSF.guardingForm = guarding
 
 local guardEligible = SMA.guardEligible
-function SMA.guardEligible(player)
+function SMA.guardEligible(player, ...)
     if player and guarding(player) then
         return not (player:isDead() or player:isOnFloor() or player:hasHitReaction()
             or player:isBeingGrappled() or player:isDoShove())
     end
-    return guardEligible(player)
+    return guardEligible(player, ...)
 end
 
 -- Core lowers a guard's drain by the defender's Martial Arts level only if they have an unarmed
 -- style; give Form users the same reduction.
 local guardDrain = SMA.guardDrain
-function SMA.guardDrain(attacker, target, weapon)
-    local drain = guardDrain(attacker, target, weapon)
+function SMA.guardDrain(attacker, target, weapon, ...)
+    local drain = guardDrain(attacker, target, weapon, ...)
     if target and guarding(target) and not SMA.getStyle(target) then
         drain = math.max(5, drain * (1 - SMA.getLevel(target) * .03))
     end
@@ -307,9 +348,9 @@ end
 -- A player's ignited photon sword belongs to their enabled photon sword Form, not the katana art.
 -- With no Form enabled (none learned, or the Photon Sword tab's Disable), the katana art has it.
 local katanaCanUse = SWMK.canUse
-function SWMK.canUse(player, weapon)
+function SWMK.canUse(player, weapon, ...)
     if PSF.fightingForm(player, weapon) then return false end
-    return katanaCanUse(player, weapon)
+    return katanaCanUse(player, weapon, ...)
 end
 
 -- Photon Sword's stance gives way while a Form's block plays; while a dodge plays (Core sets

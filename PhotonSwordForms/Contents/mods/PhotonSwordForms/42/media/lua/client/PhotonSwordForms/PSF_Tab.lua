@@ -16,6 +16,8 @@ local Admin = require "SWMA_Admin"
 local Manuals = require "SWMA_Manuals"
 local PSF = require "PhotonSwordForms/PSF_Forms"
 require "PhotonSwordForms/PSF_Manual"
+require "PhotonSword/PS_Core"
+local PS = PhotonSword
 
 -- One entry per Form, shaped like Senator's: prefix is the Form's key in SWMA_Manuals.definitions.
 local entries = {}
@@ -457,18 +459,20 @@ end
 -- The character info panel's martial arts view, built by SWMA_Window's createChildren wrapper.
 if ISCharacterInfoWindow and ISCharacterInfoWindow.createChildren then
     local createChildren = ISCharacterInfoWindow.createChildren
-    function ISCharacterInfoWindow:createChildren()
-        createChildren(self)
+    function ISCharacterInfoWindow:createChildren(...)
+        local results = PS.pack(createChildren(self, ...))
         attach(self.swmaTabs, self.smaStyleView, self.playerNum)
+        return unpack(results, 1, results.n)
     end
 end
 
 -- The standalone martial arts window, built by SWMA_Window's toggleStyleWindow wrapper.
 local toggleStyleWindow = SMA.toggleStyleWindow
-function SMA.toggleStyleWindow(playerNum)
-    toggleStyleWindow(playerNum)
+function SMA.toggleStyleWindow(playerNum, ...)
+    local results = PS.pack(toggleStyleWindow(playerNum, ...))
     local frame = SMA.styleWindows and SMA.styleWindows[playerNum or 0]
     if frame then attach(frame.swmaTabs, frame.smaStyleView, playerNum or 0) end
+    return unpack(results, 1, results.n)
 end
 
 -- SWMA_Window rebuilds the info panel's tabs on resolution changes; its handler runs first.

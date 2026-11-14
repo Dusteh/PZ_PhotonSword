@@ -46,16 +46,17 @@ end
 
 -- Core only starts a dodge with an empty action queue, so the extinguish is queued once it has.
 local requestDodge = SMA.requestDodge
-function SMA.requestDodge(player)
+function SMA.requestDodge(player, ...)
     local item = player and player:getPrimaryHandItem()
     local lit = PS.isIgnited(item)
     if player then updateAnim(player) end
-    local started = requestDodge(player)
+    local results = PS.pack(requestDodge(player, ...))
+    local started = results[1]
     if started and lit and not doused[player] and PSF.sandbox("ExtinguishWhileDodging") then
         doused[player] = true
         toggle(player, item, false)
     end
-    return started
+    return unpack(results, 1, results.n)
 end
 
 local function relight(player)

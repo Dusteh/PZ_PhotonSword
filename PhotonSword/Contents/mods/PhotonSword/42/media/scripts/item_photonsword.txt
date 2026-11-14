@@ -45,7 +45,7 @@ module PhotonSword
         PushBackMod = 0.3,
         SwingAmountBeforeImpact = 0.02,
         SwingAnim = Stab,
-        SwingSound = KnifeSwing,
+        SwingSound = NightstickSwing,
         Swingtime = 2.0,
         TreeDamage = 0,
         WeaponLength = 0.2,

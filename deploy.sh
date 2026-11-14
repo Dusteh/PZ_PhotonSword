@@ -2,7 +2,7 @@
 # Copies every mod in this repo into ~/Zomboid/mods for local testing: Photon Sword, Photon Sword
 # Forms, and the compatibility patches.
 # PZ mangles script paths when the mod folder is a symlink, so this copies instead of linking.
-# The dev kits (dev/PS_DevKit.lua, dev/PSF_DevKit.lua) are copied in too, unless run with --release.
+# The dev kits and in-game tests (dev/*DevKit*.lua) are copied in too, unless run with --release.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")" && pwd)"
@@ -18,14 +18,15 @@ deploy() {
     rsync -a --delete --exclude='.gitkeep' "$root/$1/Contents/mods/$1/" "$dest/"
 }
 
-# devkit MOD KIT: copies dev/KIT into MOD's server Lua, unless --release.
+# devkit MOD FILE...: copies each dev/FILE into MOD's server Lua, unless --release.
 devkit() {
-    local dest="$HOME/Zomboid/mods/$1"
+    local mod="$1" dest="$HOME/Zomboid/mods/$1"
+    shift
     if [ "$release" = 1 ]; then
         echo "Deployed to $dest"
     else
-        mkdir -p "$dest/42/media/lua/server/$1"
-        cp "$root/dev/$2" "$dest/42/media/lua/server/$1/"
+        mkdir -p "$dest/42/media/lua/server/$mod"
+        for file in "$@"; do cp "$root/dev/$file" "$dest/42/media/lua/server/$mod/"; done
         echo "Deployed to $dest (with dev kit)"
     fi
 }
@@ -36,12 +37,12 @@ if [ "${1:-}" = "--release" ]; then
 fi
 
 deploy PhotonSword
-devkit PhotonSword PS_DevKit.lua
+devkit PhotonSword PS_DevKit.lua PS_DevKitTest.lua
 deploy PhotonSwordForms
-devkit PhotonSwordForms PSF_DevKit.lua
+devkit PhotonSwordForms PSF_DevKit.lua PSF_DevKitTest.lua
 
 # The compatibility patches, mods of their own.
-for patch in PhotonSwordBandits PhotonSwordALife; do
-    deploy "$patch"
-    echo "Deployed to $HOME/Zomboid/mods/$patch"
-done
+deploy PhotonSwordBandits
+devkit PhotonSwordBandits PSB_DevKitTest.lua
+deploy PhotonSwordALife
+devkit PhotonSwordALife PSA_DevKit.lua PSA_DevKitTest.lua

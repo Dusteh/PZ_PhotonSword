@@ -5,6 +5,11 @@
 -- Form's mastery and half the Martial Arts level, and each deflection drains the guard meter as
 -- Core's block does (SMA.guardDrain, scaled by the GuardDrainMultiplier sandbox option); one the
 -- meter can't pay for breaks the guard and the shot lands. Anyone else keeps Photon Sword's rules.
+--
+-- Blocking photon swords: a Form's block always stops a photon sword's strike from in front while
+-- the meter pays (PS.blockChance is 100), draining it as above. Another player's strike is Core's
+-- to settle (its block takes any melee hit between players), so Photon Sword leaves those alone
+-- (PS.meleeGuardHandled); an NPC's strike (the patch mods) goes through Photon Sword.
 
 local SMA = require "SMA_Core"
 require "SMA_Guard"
@@ -59,6 +64,7 @@ formHook("drainGuard", function(player, drain, now)
         return false
     end
     g.meter, g.lastHit = g.meter - drain, now
+    PSF.photonStamps[player] = now   -- not one of Core's blocks (PSF.newCoreBlock)
     if isServer() then
         sendServerCommand(player, SMA.module, "guardHit",
             { playerID = player:getOnlineID(), meter = math.floor(g.meter), fresh = false })
@@ -75,5 +81,15 @@ formHook("guardPays", function(player, drain)
     g.meter = g.meter - drain
     return true
 end)
+
+formHook("blockChance", function(player)
+    return 100
+end)
+
+local meleeGuardHandled = PS.meleeGuardHandled
+function PS.meleeGuardHandled(attacker, player)
+    if PSF.guardingForm(player) and attacker and instanceof(attacker, "IsoPlayer") then return true end
+    return meleeGuardHandled(attacker, player)
+end
 
 return PSF

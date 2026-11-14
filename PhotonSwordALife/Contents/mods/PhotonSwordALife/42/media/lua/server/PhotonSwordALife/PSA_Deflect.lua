@@ -14,6 +14,11 @@
 -- soaked share (PS.soak). A deflected bullet strikes the NPC back through A-Life's own human
 -- damage (HumanDamage.apply), so its health model and hit reactions apply.
 --
+-- An NPC's melee strikes land through the same calls, so a photon sword's strike (the NPC's own
+-- sword, or the copy A-Life scales its damage on) meets the guard there too (PS.judgeBlow): a
+-- blocked strike reports itself landed, deals nothing, and mutes the pain cry. Players' strikes at
+-- NPCs are PSA_Block.lua's.
+--
 -- All of this runs where A-Life wounds players: in single player, or on the multiplayer server.
 
 local PS = require "PhotonSword/PS_Deflect"
@@ -40,6 +45,10 @@ end
 
 local function damagePlayer(original, bodyDamage, weapon, part, ...)
     local player = shooter and bodyDamage and bodyDamage:getParentChar()
+    if player and instanceof(player, "IsoPlayer") and not ranged(weapon) and PS.judgeBlow(shooter, player, weapon) then
+        muted[player] = getTimestampMs() + MUTE_MS
+        return true
+    end
     if player and instanceof(player, "IsoPlayer") and ranged(weapon) then
         local deflected, share = PS.judgeShot(shooter, player, weapon)
         if deflected or share >= 1 then
@@ -115,7 +124,7 @@ local function install()
     for i, ok in ipairs(done) do
         if not ok then missing[#missing + 1] = names[i] end
     end
-    print("Photon Sword - Project A-Life: patched"
+    print("[PhotonSwordALife] patched"
         .. (#missing > 0 and ("; not found: " .. table.concat(missing, ", ")) or " everything"))
 end
 

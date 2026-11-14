@@ -94,6 +94,22 @@ Events.OnClientCommand.Add(function(module, command, player, args)
     end
 end)
 
+-- Core's blocks (PSF.newCoreBlock), which only the server can tell from Photon Sword's drains: every
+-- client, the blocker's own too, gets a "parry" to play on that player.
+local seenCoreBlocks = setmetatable({}, { __mode = "k" })
+local tick = 0
+Events.OnTick.Add(function()
+    tick = tick + 1
+    if not isServer() or tick % 3 ~= 0 then return end
+    local players = getOnlinePlayers()
+    for i = 0, players:size() - 1 do
+        local player = players:get(i)
+        if PSF.newCoreBlock(player, seenCoreBlocks) and PSF.guardingForm(player) then
+            sendServerCommand(PSF.module, "parry", { playerID = player:getOnlineID() })
+        end
+    end
+end)
+
 Events.OnPlayerDeath.Add(function(player)
     requests[player] = nil
 end)

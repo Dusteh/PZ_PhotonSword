@@ -50,3 +50,18 @@ option PhotonSword.SoakMax
 
 option PhotonSword.SoakFullChance
 {type = integer, min = 0, max = 100, default = 60, page = PhotonSword, translation = PhotonSword_SoakFullChance,}
+
+option PhotonSword.BlockPhotonSwords
+{type = boolean, default = true, page = PhotonSword, translation = PhotonSword_BlockPhotonSwords,}
+
+option PhotonSword.BlockChanceMin
+{type = integer, min = 0, max = 100, default = 30, page = PhotonSword, translation = PhotonSword_BlockChanceMin,}
+
+option PhotonSword.BlockChanceMax
+{type = integer, min = 0, max = 100, default = 90, page = PhotonSword, translation = PhotonSword_BlockChanceMax,}
+
+option PhotonSword.NpcBlockChance
+{type = integer, min = 0, max = 100, default = 35, page = PhotonSword, translation = PhotonSword_NpcBlockChance,}
+
+option PhotonSword.NpcVsNpcBlockChance
+{type = integer, min = 0, max = 100, default = 20, page = PhotonSword, translation = PhotonSword_NpcVsNpcBlockChance,}

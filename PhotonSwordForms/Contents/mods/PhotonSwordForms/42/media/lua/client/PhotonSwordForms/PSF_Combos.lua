@@ -1,85 +1,115 @@
--- Client combo driver for photon sword Forms (follows SWMK_Combos.lua): picks the next move of
--- the selected combo on each swing, queues a follow-up when attack is pressed again during a
--- move, and plays it when the move finishes. Releasing aim, turning away, shoving, or changing
--- weapons drops the combo. Installed on every Form.
+-- Client combo driver for photon sword Forms. Each swing with a Form plays the next move of the
+-- selected Form's combo. Pressing attack again during a move queues the one after, which plays
+-- when the move ends; a move that runs to its end flows on into the next by itself, unless the
+-- Form breaks the combo there. The combo is dropped when the player lets go of aim, shoves, aims
+-- at the floor, turns away, changes what's in their hands, or can no longer fight with the Form.
+-- Senator's arts call these from their Combat files (W.selectComboMove, W.updateCombo,
+-- W.finishCombo); PSF_Combat.lua does the same for Forms, and the timings match Senator's so
+-- Forms chain like Senator's arts. Installed on every Form.
 
 local PSF = require "PhotonSwordForms/PSF_Forms"
 
-local function sameFacing(player, state)
-    return player:getForwardDirectionX() * state.fx + player:getForwardDirectionY() * state.fy > 0.5
+local QUEUE_AFTER_MS = 120   -- a press this soon after a move starts doesn't queue the next one
+local CHAIN_MS = 300         -- how long the next move has to start once a move ends
+local IDLE_MS = 1000         -- a combo with no move playing this long is dropped
+
+local function facingSame(player, combo)
+    return player:getForwardDirectionX() * combo.fx + player:getForwardDirectionY() * combo.fy > 0.5
+end
+
+-- The same weapon (the one being swung, or the one in hand), off hand, and facing the combo began with.
+local function gripSame(player, combo, weapon)
+    return combo.weapon == (weapon or player:getPrimaryHandItem())
+        and combo.offhand == player:getSecondaryHandItem() and facingSame(player, combo)
+end
+
+local function stillAiming(player)
+    return player:isAnyAimKeyDown() and not player:isDoShove() and not player:isAimAtFloor()
 end
 
 local function install(W)
-    local sessions = {}
+    -- A player's combo: what they held and faced when it began, the Form, the move playing (its
+    -- index in the Form's moves, and id), the attack button's state, and once the move has ended
+    -- and the next is on its way, chainBy (the time it has to start by).
+    local combos = setmetatable({}, { __mode = "k" })
+
+    local function begin(player, weapon, form)
+        local combo = { weapon = weapon, offhand = player:getSecondaryHandItem(), form = form, index = 0,
+            fx = player:getForwardDirectionX(), fy = player:getForwardDirectionY() }
+        combos[player] = combo
+        return combo
+    end
+
+    -- The combo this swing carries on, if one is waiting for it.
+    local function waiting(player, weapon, form, now)
+        local combo = combos[player]
+        if combo and combo.chainBy and now <= combo.chainBy and combo.form == form
+                and combo.index < #W.forms[form].moves and W.allowedForm(player, form)
+                and gripSame(player, combo, weapon) then
+            return combo
+        end
+    end
+
+    local function holds(player, combo)
+        return gripSame(player, combo) and stillAiming(player) and W.eligible(player)
+            and W.allowedForm(player, combo.form) and W.selectedForm(player) == combo.form
+    end
+
+    -- Whether the move that just ended chains on: the next was queued, or the move ran to its end
+    -- and the Form flows on from it. A move marked completionRequired must have run to its end.
+    local function chainsOn(player, combo)
+        local form, move = W.forms[combo.form], W.moves[combo.id]
+        if not form then return false end
+        local completed = player:getVariableString("PSFCompleted") == combo.id
+        local flows = completed and form.moves[combo.index + 1] ~= nil and not (form.breaks and form.breaks[combo.index])
+        if not (combo.queued or flows) then return false end
+        if move and move.completionRequired == true and not completed then return false end
+        return not W.progression.pending[player] and holds(player, combo)
+    end
 
     function W.resetCombo(player)
-        if player then
-            sessions[player:getPlayerNum()] = nil
-            player:setVariable("PSFActive", false)
-            player:setVariable("PSFMove", "")
-            player:setVariable("PSFForm", "")
-            player:setVariable("PSFCompleted", "")
-            W.updateHold(player)
-        end
+        if not player then return end
+        combos[player] = nil
+        player:setVariable("PSFActive", false)
+        player:setVariable("PSFMove", "")
+        player:setVariable("PSFForm", "")
+        player:setVariable("PSFCompleted", "")
+        W.updateHold(player)
     end
 
     function W.selectComboMove(player, weapon)
-        local slot, now = player:getPlayerNum(), getTimestampMs()
-        local state = sessions[slot]
-        local selected = W.selectedForm(player)
-        if not state or not state.ready or state.player ~= player or state.weapon ~= weapon
-            or state.offhand ~= player:getSecondaryHandItem() or state.form ~= selected
-            or now > state.ready or not W.allowedForm(player, state.form)
-            or state.index >= #W.forms[state.form].moves or not sameFacing(player, state) then
-            state = { player = player, weapon = weapon, offhand = player:getSecondaryHandItem(), index = 0,
-                form = selected, fx = player:getForwardDirectionX(), fy = player:getForwardDirectionY() }
-            sessions[slot] = state
-        end
-        local chain = W.forms[state.form].moves
-        state.index = W.cycleAdvance(player, chain, state.index, W.forms[state.form])
-        if not state.index then W.cancelAttack(player); return nil end
-        W.cycleRemember(player, chain, state.index, W.forms[state.form])
-        state.last, state.queued, state.ready, state.released, state.finished = now, false, false, false, false
-        state.endpointReported = false
-        state.down = player:isAttackButtonDown()
-        state.id = chain[state.index]
+        local now, selected = getTimestampMs(), W.selectedForm(player)
+        local combo = waiting(player, weapon, selected, now) or begin(player, weapon, selected)
+        local form = W.forms[combo.form]
+        local index = W.cycleAdvance(player, form.moves, combo.index, form)
+        if not index then W.cancelAttack(player); return nil end
+        W.cycleRemember(player, form.moves, index, form)
+        combo.index, combo.id, combo.started = index, form.moves[index], now
+        combo.queued, combo.chainBy, combo.released, combo.cut = false, nil, false, false
+        combo.pressed = player:isAttackButtonDown()
         player:setVariable("PSFCompleted", "")
-        player:setVariable("PSFForm", W.formToken(state.form, state.index))
-        return state.id
+        player:setVariable("PSFForm", W.formToken(combo.form, index))
+        return combo.id
     end
 
     function W.queueCombo(player)
-        local state = sessions[player:getPlayerNum()]
-        if not state or state.player ~= player or state.weapon ~= player:getPrimaryHandItem()
-            or state.offhand ~= player:getSecondaryHandItem()
-            or not W.eligible(player) or not sameFacing(player, state)
-            or not W.allowedForm(player, state.form)
-            or (state.index < #W.forms[state.form].moves
-                and not W.cycleStart(W.forms[state.form].moves, state.index + 1, W.forms[state.form]))
-            or getTimestampMs() - state.last < 120 then return false end
-        state.queued = true
+        local combo = combos[player]
+        if not combo or getTimestampMs() - combo.started < QUEUE_AFTER_MS or not gripSame(player, combo)
+                or not W.eligible(player) or not W.allowedForm(player, combo.form) then
+            return false
+        end
+        local form = W.forms[combo.form]
+        if combo.index < #form.moves and not W.cycleStart(form.moves, combo.index + 1, form) then return false end
+        combo.queued = true
         return true
     end
 
     function W.finishCombo(player)
         if not player then return end
-        local state = sessions[player:getPlayerNum()]
-        if state and state.finished then return end
-        local move = state and W.moves[state.id]
-        local sourceStage = move and move.completionRequired == true
-        local completed = state and player:getVariableString("PSFCompleted") == state.id
-        local form = state and W.forms[state.form]
-        local followThrough = completed and form and form.moves[state.index + 1]
-            and not (form.breaks and form.breaks[state.index])
-        if state and not W.progression.pending[player] and state.player == player and (state.queued or followThrough)
-            and state.weapon == player:getPrimaryHandItem() and state.offhand == player:getSecondaryHandItem()
-            and (not sourceStage or completed) and W.eligible(player)
-            and W.allowedForm(player, state.form) and W.selectedForm(player) == state.form
-            and not state.finished
-            and not player:isDoShove() and sameFacing(player, state)
-            and not player:isAimAtFloor() and player:isAnyAimKeyDown() then
-            state.finished = true
-            state.ready = getTimestampMs() + 300
+        local combo = combos[player]
+        if combo and combo.chainBy then return end
+        if combo and chainsOn(player, combo) then
+            combo.chainBy = getTimestampMs() + CHAIN_MS
             player:DoAttack(0)
         else
             W.resetCombo(player)
@@ -88,45 +118,39 @@ local function install(W)
 
     function W.updateCombo(player)
         if not IsoPlayer.isLocalPlayer(player) then return end
-        local state = sessions[player:getPlayerNum()]
-        if not state then return end
-        if not W.eligible(player) or state.weapon ~= player:getPrimaryHandItem()
-            or state.offhand ~= player:getSecondaryHandItem()
-            or not W.allowedForm(player, state.form) or W.selectedForm(player) ~= state.form
-            or not sameFacing(player, state) or player:isDoShove()
-            or player:isAimAtFloor()
-            or not player:isAnyAimKeyDown() then
-            W.resetCombo(player)
-            return
-        end
+        local combo = combos[player]
+        if not combo then return end
+        if not holds(player, combo) then W.resetCombo(player); return end
+
+        -- A fresh press (after letting go since the move started) queues the next move.
         local down = player:isAttackButtonDown()
-        if not down then state.released = true end
-        if down and not state.down and state.released then W.queueCombo(player) end
-        state.down = down
+        if not down then
+            combo.released = true
+        elseif not combo.pressed and combo.released then
+            W.queueCombo(player)
+        end
+        combo.pressed = down
+
         -- A move's clip sets PSFCompleted near its end; cut the remaining recovery there.
-        if W.moves[state.id].completionRequired and not state.endpointReported
-            and player:getVariableString("PSFCompleted") == state.id and player:isAttacking() then
-            state.endpointReported = true
+        local move = W.moves[combo.id]
+        if move and move.completionRequired and not combo.cut and player:isAttacking()
+                and player:getVariableString("PSFCompleted") == combo.id then
+            combo.cut = true
             player:setVariable("AttackAnim", false)
             player:reportEvent("ActiveAnimFinishing")
-            if sessions[player:getPlayerNum()] ~= state then return end
+            if combos[player] ~= combo then return end
         end
-        if not state.ready and not state.finished and not player:isAttacking()
-            and getTimestampMs() - state.last > 1000 then
+
+        local now = getTimestampMs()
+        if not combo.chainBy then
+            if not player:isAttacking() and now - combo.started > IDLE_MS then W.resetCombo(player) end
+        elseif now > combo.chainBy then
             W.resetCombo(player)
-            return
-        end
-        if state.ready then
-            if getTimestampMs() > state.ready then
-                W.resetCombo(player); player:setVariable("PSFMove", "")
-            elseif not player:isAttacking() then
-                player:DoAttack(0)
-            end
+        elseif not player:isAttacking() then
+            player:DoAttack(0)
         end
     end
 
-    Events.OnCreatePlayer.Add(function(slot) sessions[slot] = nil end)
-    Events.OnGameStart.Add(function() sessions = {} end)
     Events.OnPlayerDeath.Add(W.resetCombo)
 end
 

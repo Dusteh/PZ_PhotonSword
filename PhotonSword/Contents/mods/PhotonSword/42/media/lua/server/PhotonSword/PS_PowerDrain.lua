@@ -11,7 +11,14 @@ local function getPlayers()
     return IsoPlayer.getPlayers()
 end
 
+-- A blade that never had a battery (an NPC's, or one from the debug menu) arrives with a part-
+-- drained one, so it doesn't go out the moment a player picks it up.
+local NPC_CHARGE_MIN, NPC_CHARGE_MAX = 0.2, 0.6
+
 local function drainBlade(playerObj, blade, drain)
+    if not PS.hasBattery(blade) then
+        PS.setCharge(blade, ZombRandFloat(NPC_CHARGE_MIN, NPC_CHARGE_MAX))
+    end
     local charge = PS.getCharge(blade) - drain
     PS.setCharge(blade, charge)
     if charge <= 0 then

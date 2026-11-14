@@ -28,7 +28,12 @@ CLIP = {"male": "SWMK_Katana_{}", "female": "SWMK_Katana_Female_{}"}
 # stance node seems to keep playing while its own conditions hold, even when a higher-priority node
 # matches.
 STANCES = {
-    "block": dict(variable="PSFBlock", clip="PSF_Block", rank=5),
+    "block": dict(variable="PSFBlock", clip="PSF_Block", rank=5, conditions=[("PSFParry", "BOOL", "false")]),
+    # The block meeting another photon sword (PSF_BlockParry, tools/anim/make_block.py, one pass):
+    # played for the clip's length when the block stops a photon sword's strike (PSF_Core.lua sets
+    # PSFParry), snapping in to meet it.
+    "blockParry": dict(variable="PSFParry", clip="PSF_BlockParry", rank=6, looped=False, blend="0.06",
+                       conditions=[("PSFBlock", "BOOL", "true")]),
 }
 
 # The photon sword's dodges (tools/anim/make_dodge.py): a leap away with the hilt in the sword hand.
@@ -65,15 +70,15 @@ MOVES = {
 # Each stance per AnimSet state: condition priority, extra conditions, and bone weights
 # (aim-strafe leaves the legs to the strafe animation), and clips that replace a stance's own in that state.
 STATES = {
-    "aim": dict(priority=80, stances=["block"]),
-    "strafe": dict(priority=110, stances=["block"], conditions=[("PSFWalking", "BOOL", "false")]),
-    "aim-strafe": dict(priority=80, stances=["block"], bones=[("Bip01", 0, True), ("Bip01_Spine", 1, False),
+    "aim": dict(priority=80, stances=["block", "blockParry"]),
+    "strafe": dict(priority=110, stances=["block", "blockParry"], conditions=[("PSFWalking", "BOOL", "false")]),
+    "aim-strafe": dict(priority=80, stances=["block", "blockParry"], bones=[("Bip01", 0, True), ("Bip01_Spine", 1, False),
                                                            ("Bip01_Spine1", 1, True), ("Bip01_Prop1", 1, None),
                                                            ("Bip01_Prop2", 1, None)]),
     # Turning in place while aiming (tracking a target) would drop the block for the vanilla turn;
     # hold it instead, as Martial Arts Core does for its unarmed block.
-    "turning": dict(priority=80, stances=["block"], conditions=[("aim", "BOOL", "true"), ("ismoving", "BOOL", "false")]),
-    "turningAim180": dict(priority=80, stances=["block"],
+    "turning": dict(priority=80, stances=["block", "blockParry"], conditions=[("aim", "BOOL", "true"), ("ismoving", "BOOL", "false")]),
+    "turningAim180": dict(priority=80, stances=["block", "blockParry"],
                           conditions=[("aim", "BOOL", "true"), ("ismoving", "BOOL", "false")]),
 }
 
@@ -170,7 +175,7 @@ def stance_node(stance, state, data, sex):
         f"  <m_Looped>{str(stance.get('looped', True)).lower()}</m_Looped>",
         f"  <m_StopAnimOnExit>{str(not stance.get('looped', True)).lower()}</m_StopAnimOnExit>",
         "  <m_maxTorsoTwist>0</m_maxTorsoTwist>",
-        "  <m_BlendTime>0.22</m_BlendTime>",
+        f"  <m_BlendTime>{stance.get('blend', '0.22')}</m_BlendTime>",
         "  <m_BlendOutTime>0.22</m_BlendOutTime>",
         "  <m_useDeferredMovement>false</m_useDeferredMovement>",
         "  <m_SyncTrackingEnabled>false</m_SyncTrackingEnabled>",

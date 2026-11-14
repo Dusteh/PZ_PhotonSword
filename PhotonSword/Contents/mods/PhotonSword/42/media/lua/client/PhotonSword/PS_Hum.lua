@@ -2,7 +2,7 @@ require "PhotonSword/PS_Core"
 require "PhotonSword/PS_Options"
 
 -- Blade sounds driven by this client's mod options:
---  * A soft looping hum on every player holding an ignited blade, in the chosen tone and pitch.
+--  * A soft looping hum on every player and NPC (PS.forEachNpcWielder) holding an ignited blade, in the chosen tone and pitch.
 --    It fades out while the player is swinging (the swing sound takes over) and back in afterwards.
 --  * The swing and hit (spark) sounds of local players' blades, re-pointed to the chosen tone and
 --    pitch. The game plays these by name from the weapon, so they can't be re-pitched like the hum.
@@ -31,7 +31,7 @@ local function startHum(key, playerObj, sound)
 end
 
 local function updateWeaponSounds(playerObj, blade)
-    if not playerObj:isLocalPlayer() then return end
+    if not instanceof(playerObj, "IsoPlayer") or not playerObj:isLocalPlayer() then return end
     local swing = PS.swingSound(PSO.getTone(PSO.swingTone), PSO.swingPitch:getValue())
     if blade:getSwingSound() ~= swing then
         blade:setSwingSound(swing)
@@ -91,7 +91,7 @@ local function updateHum(key, playerObj)
 end
 
 local function onTick()
-    local seen = PS.forEachPlayer(updateHum)
+    local seen = PS.forEachWielder(updateHum)
     for key in pairs(hums) do
         if not seen[key] then stopHum(key) end
     end

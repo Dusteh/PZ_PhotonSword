@@ -1,7 +1,8 @@
 require "PhotonSword/PS_Core"
 require "PhotonSword/PS_Options"
 
--- Casts colored light around every visible player holding an ignited blade.
+-- Casts colored light around every visible player, and every NPC (PS.forEachNpcWielder),
+-- holding an ignited blade.
 -- Lights are client-side only: each client draws them for the players it can see.
 -- Radius and on/off come from this client's mod options.
 
@@ -10,7 +11,7 @@ local PSO = PhotonSwordOptions
 
 local UPDATE_EVERY_TICKS = 5
 local tickCounter = 0
-local lights = {} -- [player onlineID or index] = { source, x, y, z, color, radius }
+local lights = {} -- [player onlineID or index, or NPC zombie] = { source, x, y, z, color, radius }
 
 local function removeLight(key)
     local entry = lights[key]
@@ -47,7 +48,7 @@ local function onTick()
     if tickCounter < UPDATE_EVERY_TICKS then return end
     tickCounter = 0
 
-    local seen = PS.forEachPlayer(updateLight)
+    local seen = PS.forEachWielder(updateLight)
     for key in pairs(lights) do
         if not seen[key] then removeLight(key) end
     end

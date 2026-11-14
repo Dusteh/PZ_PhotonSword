@@ -107,5 +107,7 @@ Events.OnServerCommand.Add(function(module, command, args)
         onFormCommand(W, command, player, args)
     elseif command == "active" and (args.id == "" or PSF.byId[args.id]) then
         PSF.state(player).active = args.id ~= "" and args.id or nil
+    elseif command == "parry" then
+        PhotonSword.noteParry(player)
     end
 end)

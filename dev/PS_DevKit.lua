@@ -20,7 +20,7 @@ local KIT = {
     longBlade = 10,    -- Long Blade skill, 0-10 (deflect and soak chances; 10 allows a whole blast blocked)
 }
 
-PSDevKit = {}
+PSDevKit = PSDevKit or {}
 
 function PSDevKit.give(player)
     local inv = player:getInventory()

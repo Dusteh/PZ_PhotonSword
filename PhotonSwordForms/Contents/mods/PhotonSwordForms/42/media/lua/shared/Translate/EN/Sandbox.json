@@ -1,9 +1,9 @@
 {
     "Sandbox_PhotonSwordForms": "Photon Sword Forms",
-    "Sandbox_PhotonSwordForms_FormMasteryDamage": "Damage per Form Mastery Level (%)",
-    "Sandbox_PhotonSwordForms_FormMasteryDamage_tooltip": "Each mastery level of the Form you fight with adds this much to the sword's damage in that Form (10 means +50% at full mastery). It stacks with Senator's Attack Damage sandbox multiplier.",
+    "Sandbox_PhotonSwordForms_FormMasteryDamage": "Damage per Form Mastery Level (%%)",
+    "Sandbox_PhotonSwordForms_FormMasteryDamage_tooltip": "Each mastery level of the Form you fight with adds this much to the sword's damage in that Form (10 means +50%% at full mastery). It stacks with Senator's Attack Damage sandbox multiplier.",
     "Sandbox_PhotonSwordForms_ExtinguishWhileDodging": "Extinguish While Dodging",
     "Sandbox_PhotonSwordForms_ExtinguishWhileDodging_tooltip": "Dodging with a lit photon sword (Martial Arts Core's dodge key while aiming) puts the blade out for the leap. Each player chooses in their mod options whether it relights when they land. Off: the blade stays lit through the dodge.",
-    "Sandbox_PhotonSwordForms_GuardDrainMultiplier": "Guard Drain from Gunfire",
-    "Sandbox_PhotonSwordForms_GuardDrainMultiplier_tooltip": "Scales how much a deflected bullet or soaked blast drains the guard meter (Martial Arts Core's block drain). 0 means gunfire never drains it."
+    "Sandbox_PhotonSwordForms_GuardDrainMultiplier": "Guard Drain from Gunfire and Blocks",
+    "Sandbox_PhotonSwordForms_GuardDrainMultiplier_tooltip": "Scales how much a deflected bullet, a soaked blast, or a blocked NPC photon sword strike drains the guard meter (Martial Arts Core's block drain). 0 means they never drain it."
 }

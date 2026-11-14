@@ -6,13 +6,20 @@ vanilla's animations) and reads only this mod's animation variables (PSHolding, 
 client/PhotonSword/PS_Stance.lua sets. They override vanilla's two-handed idle, aim, and walks while
 an ignited sword is held in both hands. Photon Sword Forms' attack and block nodes outrank them.
 
-Usage: gen_animsets.py   (rewrites 42/media/AnimSets/player/*/PS_*.xml)
+Usage: gen_animsets.py   (rewrites 42/media/AnimSets/player/*/PS_*.xml and zombie/*/PS_*.xml)
 """
 
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "PhotonSword/Contents/mods/PhotonSword/42/media/AnimSets/player"
+ZOMBIE_OUT = OUT.parent / "zombie"
+
+# The NPC mods' characters are zombies wearing the player skeleton, playing their actions in the
+# zombie "bumped" state by BumpType (Bandits' and Project A-Life's own nodes do the same). An NPC
+# whose photon sword blocks a strike gets BumpType PSParry (PS.playNpcParry, PS_Deflect.lua), which
+# plays the ready stance's parry once and hands the NPC back to its mod.
+ZOMBIE_BUMPS = {"PS_parry": dict(bump="PSParry", clip="PS_Parry", blend="0.1", blend_out="0.25")}
 
 # Looped stances while aiming: the ready stance (PSGuard), PS_Ready (tools/anim/make_ready.py: a
 # two-handed ready guard, the pommel by the sword hip and the blade pointing ahead toward the cursor),
@@ -23,11 +30,16 @@ OUT = ROOT / "PhotonSword/Contents/mods/PhotonSword/42/media/AnimSets/player"
 # keep playing while turning in place: vanilla's turn only takes the legs, pelvis, and lower spine
 # (turning/turn.xml), so the sword stays in the rest above them.
 STANCES = {
-    "guard": dict(variable="PSGuard", clip="PS_Ready", rank=0, conditions=[("PSBeckon", "BOOL", "false")]),
+    "guard": dict(variable="PSGuard", clip="PS_Ready", rank=0,
+                  conditions=[("PSBeckon", "BOOL", "false"), ("PSParry", "BOOL", "false")]),
+    # The guard meeting another photon sword (PS_Parry, tools/anim/make_parry.py, one pass): played
+    # for the clip's length when the ready stance blocks a photon sword's strike (PS_Stance.lua sets
+    # PSParry). It outranks the beckon and snaps in (a short blend) to meet the strike.
+    "parry": dict(variable="PSParry", clip="PS_Parry", rank=2, looped=False, blend="0.08"),
     # Now and then, standing in the ready stance, the off hand leaves the hilt to beckon
     # (PS_ReadyBeckon, one pass; PS_Stance.lua sets PSBeckon for its length).
     "beckon": dict(variable="PSBeckon", clip="PS_ReadyBeckon", rank=1, looped=False,
-                   conditions=[("PSWalking", "BOOL", "false")]),
+                   conditions=[("PSWalking", "BOOL", "false"), ("PSParry", "BOOL", "false")]),
     # The same beckon while aiming an extinguished hilt (PS_AimBeckon, over vanilla's one-handed aim;
     # PS_Stance.lua sets PSHiltBeckon). The hilt isn't two-handed, and with no lit sword PSFemale is
     # unset, so this node takes any weapon and either sex.
@@ -61,11 +73,12 @@ WALKS = {
 # Each stance per AnimSet state: condition priority, extra conditions, and bone weights
 # (aim-strafe leaves the legs to the strafe animation), and clips that replace a stance's own in that state.
 STATES = {
-    "aim": dict(priority=80, stances=["guard", "beckon", "hiltBeckon"]),
-    "strafe": dict(priority=110, stances=["guard", "beckon", "hiltBeckon"],
+    "aim": dict(priority=80, stances=["guard", "parry", "beckon", "hiltBeckon"]),
+    "strafe": dict(priority=110, stances=["guard", "parry", "beckon", "hiltBeckon"],
                    conditions=[("PSWalking", "BOOL", "false")]),
     # Walking in the ready stance plays PS_ReadyWalk, leaned back to offset the walk's forward-tipped pelvis.
-    "aim-strafe": dict(priority=80, stances=["guard"], clips={"guard": "PS_ReadyWalk"},
+    # A parry while walking plays over the walk the same way, upper body only.
+    "aim-strafe": dict(priority=80, stances=["guard", "parry"], clips={"guard": "PS_ReadyWalk"},
                        bones=[("Bip01", 0, True), ("Bip01_Spine", 1, False), ("Bip01_Spine1", 1, True),
                               ("Bip01_Prop1", 1, None), ("Bip01_Prop2", 1, None)]),
     # Standing at rest, over vanilla's Idle2Handed and sneakidle2handed.
@@ -101,7 +114,7 @@ def stance_node(stance, state, data, sex):
         f"  <m_Looped>{str(stance.get('looped', True)).lower()}</m_Looped>",
         f"  <m_StopAnimOnExit>{str(not stance.get('looped', True)).lower()}</m_StopAnimOnExit>",
         "  <m_maxTorsoTwist>0</m_maxTorsoTwist>",
-        "  <m_BlendTime>0.22</m_BlendTime>",
+        f"  <m_BlendTime>{stance.get('blend', '0.22')}</m_BlendTime>",
         "  <m_BlendOutTime>0.22</m_BlendOutTime>",
         "  <m_useDeferredMovement>false</m_useDeferredMovement>",
         "  <m_SyncTrackingEnabled>false</m_SyncTrackingEnabled>",
@@ -148,6 +161,25 @@ def walk_node(name, data):
     return "\n".join(lines) + "\n"
 
 
+def bump_node(name, data):
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+<animNode>
+  <m_Name>{name}</m_Name>
+  <m_AnimName>{data['clip']}</m_AnimName>
+  <m_Priority>5</m_Priority>
+  <m_deferredBoneAxis>Y</m_deferredBoneAxis>
+  <m_Looped>false</m_Looped>
+  <m_EarlyTransitionOut>true</m_EarlyTransitionOut>
+  <m_SyncTrackingEnabled>false</m_SyncTrackingEnabled>
+  <m_BlendTime>{data['blend']}</m_BlendTime>
+  <m_BlendOutTime>{data['blend_out']}</m_BlendOutTime>
+{condition("BumpType", "STRING", data['bump'])}
+  <m_Events><m_EventName>SetVariable</m_EventName><m_Time>End</m_Time>\
+<m_ParameterValue>BumpAnimFinished=true</m_ParameterValue></m_Events>
+</animNode>
+"""
+
+
 def main():
     for old in OUT.glob("*/PS_*.xml"):
         old.unlink()
@@ -172,6 +204,14 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text)
     print(f"Wrote {len(files)} AnimSets to {OUT}")
+
+    for old in ZOMBIE_OUT.glob("*/PS_*.xml"):
+        old.unlink()
+    for name, data in ZOMBIE_BUMPS.items():
+        target = ZOMBIE_OUT / "bumped" / f"{name}.xml"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(bump_node(name, data))
+    print(f"Wrote {len(ZOMBIE_BUMPS)} zombie AnimSets to {ZOMBIE_OUT}")
 
 
 if __name__ == "__main__":
