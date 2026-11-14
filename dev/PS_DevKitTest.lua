@@ -61,13 +61,15 @@ local function context(test)
         return t.ok(got == want, (msg or "values differ") .. ": got " .. tostring(got) .. ", want " .. tostring(want))
     end
 
+    -- These end the test by yielding to the runner, not by error(): an error inside a coroutine
+    -- leaves the game's Lua (Kahlua) unable to resume it or report it.
     function t.need(cond, msg)
-        if not t.ok(cond, msg) then error(ABORT, 0) end
+        if not t.ok(cond, msg) then coroutine.yield(ABORT) end
     end
 
     function t.skip(reason)
         t.skipped = reason or "skipped"
-        error(SKIP, 0)
+        coroutine.yield(SKIP)
     end
 
     function t.wait(ms)
@@ -225,11 +227,18 @@ local function step()
         run.index = run.index + 1
         return
     end
-    local ok, result = coroutine.resume(entry.co, entry.t)
-    if not ok then
-        if result == SKIP then finish(entry, "SKIP")
-        elseif result == ABORT then finish(entry, "FAIL")
-        else finish(entry, "FAIL", "error: " .. tostring(result)) end
+    -- A test that hit an error is left unresumable ("normal") or dead; the error is in console.txt.
+    if coroutine.status(entry.co) ~= "suspended" then
+        finish(entry, "FAIL", "the test stopped on an error (see console.txt)")
+        run.index = run.index + 1
+        return
+    end
+    local resumed, ok, result = pcall(coroutine.resume, entry.co, entry.t)
+    if not resumed or not ok then
+        finish(entry, "FAIL", "error: " .. tostring(resumed and result or ok))
+        run.index = run.index + 1
+    elseif result == SKIP or result == ABORT then
+        finish(entry, result == SKIP and "SKIP" or "FAIL")
         run.index = run.index + 1
     elseif coroutine.status(entry.co) == "dead" then
         finish(entry, "PASS")
