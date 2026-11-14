@@ -512,7 +512,7 @@ Steam.
    run `./release.sh --sync-ids` to copy each new id into the repo, then commit it, so later
    uploads update the same item. Until you sync, `release.sh` keeps an id in `releases/` that the
    repo lacks, so a rebuild doesn't create a duplicate item.
-5. **Tag.** Tag the release commit (for example `git tag photonsword-v0.2.1`) and push it with
+5. **Tag.** Tag the release commit (for example `git tag photonsword-v0.1.0`) and push it with
    the branch.
 
 Upload Photon Sword before the mods that require it. After the first upload, each mod's Workshop

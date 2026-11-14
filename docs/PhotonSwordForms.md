@@ -192,7 +192,7 @@ Chance mod options are Photon Sword's.
 
 ## Current status
 
-Version 0.0.7, with the work since then not yet versioned. Form 1 is a Senator weapon art with its
+Version 0.1.0. Form 1 is a Senator weapon art with its
 own move data, AnimSets, variables, and move names; only Senator's attack clips are reused, by
 name. It guards with Martial Arts Core's block, which deflects gunfire through Photon Sword's
 deflect. The stance between moves, deflecting from the ready stance, putting the blade out to run,
