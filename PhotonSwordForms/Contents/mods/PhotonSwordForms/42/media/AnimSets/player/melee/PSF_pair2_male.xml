@@ -1,0 +1,33 @@
+<animNode>
+  <m_Name>PSF_pair2_male</m_Name>
+  <m_AnimName>SWMK_Katana_pair2</m_AnimName>
+  <m_Priority>260</m_Priority>
+  <m_ConditionPriority>80</m_ConditionPriority>
+  <m_Looped>false</m_Looped>
+  <m_BlendTime>0.10</m_BlendTime>
+  <m_BlendOutTime>0.10</m_BlendOutTime>
+  <m_StopAnimOnExit>false</m_StopAnimOnExit>
+  <m_maxTorsoTwist>0</m_maxTorsoTwist>
+  <m_SpeedScale>PSFAttackSpeed</m_SpeedScale>
+  <m_SyncTrackingEnabled>false</m_SyncTrackingEnabled>
+  <m_EarlyTransitionOut>false</m_EarlyTransitionOut>
+  <m_DeferredBoneName>Bip01</m_DeferredBoneName>
+  <m_deferredBoneAxis>Z</m_deferredBoneAxis>
+  <m_useDeferredMovement>false</m_useDeferredMovement>
+  <m_Conditions><m_Name>PSFHolding</m_Name><m_Type>BOOL</m_Type><m_Value>true</m_Value></m_Conditions>
+  <m_Conditions><m_Name>Weapon</m_Name><m_Type>STRING</m_Type><m_Value>2handed</m_Value></m_Conditions>
+  <m_Conditions><m_Name>AimFloorAnim</m_Name><m_Type>BOOL</m_Type><m_Value>false</m_Value></m_Conditions>
+  <m_Conditions><m_Name>PSFActive</m_Name><m_Type>BOOL</m_Type><m_Value>true</m_Value></m_Conditions>
+  <m_Conditions><m_Name>PSFMove</m_Name><m_Type>STRING</m_Type><m_Value>pair2</m_Value></m_Conditions>
+  <m_Conditions><m_Name>PSFFemale</m_Name><m_Type>BOOL</m_Type><m_Value>false</m_Value></m_Conditions>
+  <m_Events><m_EventName>AttackAnim</m_EventName><m_Time>Start</m_Time><m_ParameterValue>TRUE</m_ParameterValue></m_Events>
+  <m_Events><m_EventName>BlockMovement</m_EventName><m_Time>Start</m_Time><m_ParameterValue>TRUE</m_ParameterValue></m_Events>
+  <m_Events><m_EventName>PlaySwingSound</m_EventName><m_Time>Start</m_Time><m_ParameterValue /></m_Events>
+  <m_Events><m_EventName>PlayerVoiceSound</m_EventName><m_Time>Start</m_Time><m_ParameterValue>MeleeAttack</m_ParameterValue></m_Events>
+  <m_Events><m_EventName>AttackCollisionCheck</m_EventName><m_TimePc>0.1818</m_TimePc><m_ParameterValue>MeleeSwing</m_ParameterValue></m_Events>
+  <m_Events><m_EventName>SetVariable</m_EventName><m_TimePc>0.7727</m_TimePc><m_ParameterValue>PSFCompleted=pair2</m_ParameterValue></m_Events>
+  <m_Events><m_EventName>BlockMovement</m_EventName><m_TimePc>0.7727</m_TimePc><m_ParameterValue>FALSE</m_ParameterValue></m_Events>
+  <m_Events><m_EventName>AttackAnim</m_EventName><m_TimePc>0.7727</m_TimePc><m_ParameterValue>FALSE</m_ParameterValue></m_Events>
+  <m_Events><m_EventName>SetMeleeDelay</m_EventName><m_TimePc>0.7727</m_TimePc><m_ParameterValue>0</m_ParameterValue></m_Events>
+  <m_SubStateBoneWeights><boneName>Bip01</boneName><weight>1</weight></m_SubStateBoneWeights>
+</animNode>

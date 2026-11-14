@@ -1,0 +1,9 @@
+version=1
+id=0
+title=Photon Sword - Bandits
+description=[h1]Photon Sword - Bandits[/h1]
+description=A compatibility patch for Photon Sword and Bandits. A photon sword's raised guard (the ready stance, or a Form's block with Photon Sword Forms) deflects bandits' bullets and soaks their shotgun blasts by the same rules and sandbox options as other gunfire, and a deflected bullet strikes the bandit back.
+description=
+description=Requires Photon Sword and Bandits. Works with Photon Sword Forms too. Build 42.21 or later.
+tags=Build 42;Weapons
+visibility=private

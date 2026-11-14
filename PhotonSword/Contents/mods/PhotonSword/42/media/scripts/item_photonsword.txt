@@ -1,0 +1,100 @@
+module PhotonSword
+{
+    imports
+    {
+        Base
+    }
+
+    /*
+     * Two items that are swapped by Lua (see shared/PhotonSword/PS_Core.lua):
+     *   PhotonSwordHilt  inert hilt: light, nearly harmless, one-handed
+     *   PhotonSword      ignited blade: modeled on Base.Katana. Its color comes from the igniting
+     *                   player's Blade Color option; Blue below is only the default model. It shares
+     *                   the hilt's icon, so its inventory and hotbar icon don't change on ignite.
+     * Both share AttachmentType = Knife so a hotbar binding survives the swap.
+     * Blade swing/hit sounds come from sounds_photonsword.txt; both are re-pointed per player's
+     * tone/pitch options at runtime (PS_Hum.lua). Models, textures, and the icon come from tools/gen_models.py;
+     * a blade's model is switched to its Blade Color at ignition (PS.swap).
+     */
+
+    item PhotonSwordHilt
+    {
+        DisplayCategory = Weapon,
+        ItemType = base:weapon,
+        Weight = 0.6,
+        Icon = PhotonSwordHilt,
+        WeaponSprite = PhotonSword_Hilt,
+        Categories = base:smallblunt,
+        SubCategory = Swinging,
+        AttachmentType = Knife,
+        BaseSpeed = 1.0,
+        ConditionLowerChanceOneIn = 60,
+        ConditionMax = 15,
+        CritDmgMultiplier = 1.0,
+        CriticalChance = 0.0,
+        DamageCategory = Blunt,
+        DoorDamage = 0,
+        KnockdownMod = 0.0,
+        MaxDamage = 0.2,
+        MaxHitcount = 1,
+        MaxRange = 0.9,
+        MinAngle = 0.65,
+        MinDamage = 0.1,
+        MinRange = 0.61,
+        MinimumSwingtime = 2.0,
+        PushBackMod = 0.3,
+        SwingAmountBeforeImpact = 0.02,
+        SwingAnim = Stab,
+        SwingSound = KnifeSwing,
+        Swingtime = 2.0,
+        TreeDamage = 0,
+        WeaponLength = 0.2,
+    }
+
+    item PhotonSword
+    {
+        DisplayCategory = Weapon,
+        ItemType = base:weapon,
+        Weight = 0.6,
+        Icon = PhotonSwordHilt,
+        WeaponSprite = PhotonSword_Blade_Blue,
+        Categories = base:longblade,
+        SubCategory = Swinging,
+        AttachmentType = Knife,
+        BaseSpeed = 1.1,
+        ConditionLowerChanceOneIn = 60,
+        ConditionMax = 15,
+        CritDmgMultiplier = 6.0,
+        CriticalChance = 40.0,
+        DamageCategory = Slash,
+        DamageMakeHole = true,
+        DoorDamage = 15,
+        DoorHitSound = PhotonSwordHit_Classic_100,
+        EquipSound = KatanaEquip,
+        HitAngleMod = -30.0,
+        HitFloorSound = PhotonSwordHit_Classic_100,
+        HitSound = PhotonSwordHit_Classic_100,
+        ImpactSound = PhotonSwordHit_Classic_100,
+        KnockBackOnNoDeath = true,
+        KnockdownMod = 0.0,
+        MaxDamage = 15.4,
+        MaxHitcount = 4,
+        MaxRange = 1.4,
+        MinAngle = 0.8,
+        MinDamage = 11.0,
+        MinRange = 0.61,
+        MinimumSwingtime = 3.0,
+        PushBackMod = 0.5,
+        RunAnim = Run_Weapon2,
+        SwingAmountBeforeImpact = 0.02,
+        SwingAnim = Bat,
+        SwingSound = PhotonSwordSwing_Classic_100,
+        Swingtime = 3.0,
+        Tags = base:ignorezombiedensity,
+        TreeDamage = 5,
+        TwoHandWeapon = true,
+        UnequipSound = KatanaUnEquip,
+        WeaponLength = 0.4,
+        Sharpness = 1.0,
+    }
+}

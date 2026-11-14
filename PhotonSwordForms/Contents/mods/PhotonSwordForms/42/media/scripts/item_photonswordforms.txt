@@ -1,0 +1,25 @@
+module PhotonSwordForms
+{
+    imports
+    {
+        Base
+    }
+
+    /*
+     * Form 1's skill book. Finishing it teaches Form 1 (PSF_Core.lua, PSF_Form1.lua).
+     * Its look is this mod's own textures (tools/gen_manual.py) on the game's magazine meshes
+     * (models_photonswordforms.txt).
+     */
+
+    item PhotonSwordManual
+    {
+        ItemType = base:literature,
+        DisplayCategory = SkillBook,
+        Weight = 0.8,
+        Icon = PSF_Manual_1,
+        NumberOfPages = 120,
+        CanBeWrite = false,
+        StaticModel = PhotonSwordForms.PSF_Manual_1_Reading,
+        WorldStaticModel = PhotonSwordForms.PSF_Manual_1_Ground,
+    }
+}

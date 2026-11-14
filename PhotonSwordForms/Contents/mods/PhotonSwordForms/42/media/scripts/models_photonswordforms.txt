@@ -1,0 +1,20 @@
+module PhotonSwordForms
+{
+    /*
+     * Form manuals: the game's own magazine meshes with this mod's textures (tools/gen_manual.py).
+     */
+
+    model PSF_Manual_1_Reading
+    {
+        mesh = Magazine,
+        texture = PSF_Manual_1_Reading,
+        scale = 1.0,
+    }
+
+    model PSF_Manual_1_Ground
+    {
+        mesh = WorldItems/Magazine,
+        texture = PSF_Manual_1_Ground,
+        scale = 0.4,
+    }
+}

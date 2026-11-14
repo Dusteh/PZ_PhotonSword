@@ -1,0 +1,18 @@
+{
+    "IGUI_PS_NoPhotonSword": "No photon sword",
+    "IGUI_PS_NoPower": "No power",
+    "IGUI_PS_ExtinguishFirst": "Extinguish the blade first",
+    "IGUI_PS_NoBetterBattery": "No fresher battery",
+    "IGUI_PS_LowPower": "Photon Sword power low: %1%",
+    "IGUI_PS_CuttingOn": "Photon Sword cutting: on",
+    "IGUI_PS_CuttingOff": "Photon Sword cutting: off",
+    "IGUI_PS_CuttingDisabled": "Photon Sword cutting is disabled in sandbox options",
+    "IGUI_PS_Color_Blue": "Blue",
+    "IGUI_PS_Color_Green": "Green",
+    "IGUI_PS_Color_Red": "Red",
+    "IGUI_PS_Color_Purple": "Purple",
+    "IGUI_PS_Color_Yellow": "Yellow",
+    "IGUI_PS_Color_Orange": "Orange",
+    "IGUI_PS_Color_Cyan": "Cyan",
+    "IGUI_PS_Color_White": "White"
+}

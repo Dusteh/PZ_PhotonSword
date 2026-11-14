@@ -1,0 +1,10 @@
+name=Photon Sword - Bandits
+id=PhotonSwordBandits
+description=Lets a photon sword's guard (the ready stance, or a Photon Sword Forms block) deflect Bandits' bullets and soak their shotgun blasts, as it does for players' gunfire. Deflected bullets strike the bandit back.
+author=Dustin Hittenmiller
+modversion=0.0.1
+versionMin=42.21
+poster=poster.png
+icon=icon.png
+require=PhotonSword,Bandits2
+loadModAfter=PhotonSword,PhotonSwordForms,Bandits2

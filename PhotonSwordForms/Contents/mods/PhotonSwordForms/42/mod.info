@@ -1,0 +1,9 @@
+name=Photon Sword Forms
+id=PhotonSwordForms
+description=Photon sword Forms for Senator's Martial Arms. Read Photon Sword: Form 1, ignite a photon sword, and fight with Form 1, which trains its own mastery. Choose your Form in the Photon Sword tab of the martial arts window. Hold Block while aiming to raise a guard that also deflects bullets and soaks shotgun blasts, draining Martial Arts Core's guard meter.
+author=Dustin Hittenmiller
+modversion=0.0.7
+versionMin=42.20
+poster=poster.png
+icon=icon.png
+require=PhotonSword,SenatorMartialArms,SenatorMartialArtsCore

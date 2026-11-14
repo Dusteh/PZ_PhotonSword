@@ -1,0 +1,52 @@
+VERSION = 1,
+
+option PhotonSword.BatteryLifeHours
+{type = double, min = 0, max = 168, default = 8, page = PhotonSword, translation = PhotonSword_BatteryLifeHours,}
+
+option PhotonSword.DamageMultiplier
+{type = double, min = 0.1, max = 5, default = 1, page = PhotonSword, translation = PhotonSword_DamageMultiplier,}
+
+option PhotonSword.ExtinguishWhileRunning
+{type = boolean, default = true, page = PhotonSword, translation = PhotonSword_ExtinguishWhileRunning,}
+
+option PhotonSword.CutDoorsAndWindows
+{type = boolean, default = true, page = PhotonSword, translation = PhotonSword_CutDoorsAndWindows,}
+
+option PhotonSword.CutWalls
+{type = boolean, default = false, page = PhotonSword, translation = PhotonSword_CutWalls,}
+
+option PhotonSword.CutVegetation
+{type = boolean, default = true, page = PhotonSword, translation = PhotonSword_CutVegetation,}
+
+option PhotonSword.CutWorldObjects
+{type = boolean, default = true, page = PhotonSword, translation = PhotonSword_CutWorldObjects,}
+
+option PhotonSword.CutPlayerBuilt
+{type = boolean, default = false, page = PhotonSword, translation = PhotonSword_CutPlayerBuilt,}
+
+option PhotonSword.CutEffect
+{type = enum, numValues = 2, default = 1, page = PhotonSword, translation = PhotonSword_CutEffect, valueTranslation = PhotonSword_CutEffect_Values,}
+
+option PhotonSword.DeflectBullets
+{type = boolean, default = true, page = PhotonSword, translation = PhotonSword_DeflectBullets,}
+
+option PhotonSword.DeflectChanceMin
+{type = integer, min = 0, max = 100, default = 10, page = PhotonSword, translation = PhotonSword_DeflectChanceMin,}
+
+option PhotonSword.DeflectChanceMax
+{type = integer, min = 0, max = 100, default = 80, page = PhotonSword, translation = PhotonSword_DeflectChanceMax,}
+
+option PhotonSword.DeflectStrikesBack
+{type = boolean, default = true, page = PhotonSword, translation = PhotonSword_DeflectStrikesBack,}
+
+option PhotonSword.SoakShotgunBlasts
+{type = boolean, default = true, page = PhotonSword, translation = PhotonSword_SoakShotgunBlasts,}
+
+option PhotonSword.SoakMin
+{type = integer, min = 0, max = 100, default = 10, page = PhotonSword, translation = PhotonSword_SoakMin,}
+
+option PhotonSword.SoakMax
+{type = integer, min = 0, max = 100, default = 50, page = PhotonSword, translation = PhotonSword_SoakMax,}
+
+option PhotonSword.SoakFullChance
+{type = integer, min = 0, max = 100, default = 60, page = PhotonSword, translation = PhotonSword_SoakFullChance,}
