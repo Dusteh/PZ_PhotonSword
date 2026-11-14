@@ -211,6 +211,16 @@ function PS.pack(...)
     return { n = select("#", ...), ... }
 end
 
+-- Sections of the Photon Sword sandbox page, which this mod and its patch mods share
+-- (client/PhotonSword/PS_SandboxPage.lua). Each section has a title (shown as the translation of
+-- Sandbox_Title_<title>), a place on the page (order, lowest first), and the patterns of the
+-- option names it holds.
+PS.sandboxSections = PS.sandboxSections or {}
+
+function PS.addSandboxSection(order, title, ...)
+    PS.sandboxSections[#PS.sandboxSections + 1] = { order = order, title = title, patterns = { ... } }
+end
+
 -- Parries: when a character last blocked a photon sword's strike, so its parry plays while it's
 -- fresh. A player's guard is noted on each client that shows the block (PS_DeflectShow.lua) and
 -- read by the stances (PS_Stance.lua, and Photon Sword Forms' block, which also notes Martial Arts

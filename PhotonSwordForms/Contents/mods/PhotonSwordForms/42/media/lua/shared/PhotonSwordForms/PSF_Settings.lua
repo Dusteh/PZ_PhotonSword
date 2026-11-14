@@ -1,6 +1,7 @@
--- Sandbox options (media/sandbox-options.txt, the Photon Sword Forms page): balance the server
--- decides. Deflecting's own options are Photon Sword's (PS_Deflect.lua); GuardDrainMultiplier scales
--- what it costs a Form's guard (PSF_Deflect.lua). ExtinguishWhileDodging: PSF_Dodging.lua.
+-- Sandbox options (media/sandbox-options.txt, the Photon Sword Forms section of the Photon Sword
+-- page): balance the server decides. Deflecting's own options are Photon Sword's (PS_Deflect.lua);
+-- GuardDrainMultiplier scales what it costs a Form's guard (PSF_Deflect.lua).
+-- ExtinguishWhileDodging: PSF_Dodging.lua.
 
 local PSF = require "PhotonSwordForms/PSF_Core"
 

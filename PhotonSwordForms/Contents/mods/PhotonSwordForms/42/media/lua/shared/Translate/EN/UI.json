@@ -1,7 +1,6 @@
 {
     "UI_PSF_Tab": "Photon Sword",
-    "UI_PSF_Options_Title": "Photon Sword Forms",
-    "UI_PSF_Options_Dodge": "Dodging",
+    "UI_PSF_Options_Dodge": "Forms: Dodging",
     "UI_PSF_Options_DodgeAnimation": "Photon Sword Dodge Animation",
     "UI_PSF_Options_DodgeAnimation_tooltip": "Players dodging with a photon sword leap away with it held in the sword hand. Off: they play Martial Arts Core's Pak Mei dodge, which lets the sword drift from the hand. Applies to every player you see.",
     "UI_PSF_Options_RelightAfterDodge": "Relight After Dodge",

@@ -1,5 +1,5 @@
 {
-    "Sandbox_PhotonSwordForms": "Photon Sword Forms",
+    "Sandbox_Title_PhotonSwordForms": "Photon Sword Forms",
     "Sandbox_PhotonSwordForms_FormMasteryDamage": "Damage per Form Mastery Level (%%)",
     "Sandbox_PhotonSwordForms_FormMasteryDamage_tooltip": "Each mastery level of the Form you fight with adds this much to the sword's damage in that Form (10 means +50%% at full mastery). It stacks with Senator's Attack Damage sandbox multiplier.",
     "Sandbox_PhotonSwordForms_ExtinguishWhileDodging": "Extinguish While Dodging",

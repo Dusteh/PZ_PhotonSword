@@ -1,7 +1,7 @@
 VERSION = 1,
 
 option PhotonSwordBandits.SpawnChance
-{type = integer, min = 0, max = 100, default = 2, page = PhotonSwordBandits, translation = PhotonSwordBandits_SpawnChance,}
+{type = integer, min = 0, max = 100, default = 2, page = PhotonSword, translation = PhotonSwordBandits_SpawnChance,}
 
 option PhotonSwordBandits.BladeColor
-{type = enum, numValues = 9, default = 1, page = PhotonSwordBandits, translation = PhotonSwordBandits_BladeColor, valueTranslation = PhotonSwordBandits_BladeColor_Values,}
+{type = enum, numValues = 9, default = 1, page = PhotonSword, translation = PhotonSwordBandits_BladeColor, valueTranslation = PhotonSwordBandits_BladeColor_Values,}

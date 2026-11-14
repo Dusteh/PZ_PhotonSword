@@ -45,6 +45,7 @@ description=[*][b]Notifications:[/b] Low Power Warning threshold.
 description=[/list]
 description=
 description=[h2]Sandbox options (Photon Sword page)[/h2]
+description=One page for Photon Sword and its companion mods, in sections: Photon Sword, Cutting, Deflecting Gunfire, Blocking Photon Swords, and a section for each companion mod you run.
 description=[list]
 description=[*][b]Battery Life (In-Game Hours):[/b] default 8; 0 means blades never drain.
 description=[*][b]Blade Damage Multiplier:[/b] default 1.0; applies to blades ignited after the change.

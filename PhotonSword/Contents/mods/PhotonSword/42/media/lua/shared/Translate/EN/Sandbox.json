@@ -1,5 +1,9 @@
 {
     "Sandbox_PhotonSword": "Photon Sword",
+    "Sandbox_Title_PhotonSword_General": "Photon Sword",
+    "Sandbox_Title_PhotonSword_Cutting": "Cutting",
+    "Sandbox_Title_PhotonSword_Deflect": "Deflecting Gunfire",
+    "Sandbox_Title_PhotonSword_Block": "Blocking Photon Swords",
     "Sandbox_PhotonSword_BatteryLifeHours": "Battery Life (In-Game Hours)",
     "Sandbox_PhotonSword_BatteryLifeHours_tooltip": "How long a full battery keeps a blade ignited. 0 means blades never drain.",
     "Sandbox_PhotonSword_DamageMultiplier": "Blade Damage Multiplier",

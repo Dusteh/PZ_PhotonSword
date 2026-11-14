@@ -169,7 +169,7 @@ Senator's shared machinery has a few closed lists. This is how the mod works aro
 
 ## Settings
 
-**Sandbox options** (Photon Sword Forms page; `media/sandbox-options.txt`, read through
+**Sandbox options** (the Photon Sword Forms section of the Photon Sword page; `media/sandbox-options.txt`, read through
 `PSF.sandbox` in `PSF_Settings.lua`): the server's balance.
 
 | Option | Default | |
@@ -178,8 +178,8 @@ Senator's shared machinery has a few closed lists. This is how the mod works aro
 | Extinguish While Dodging | on | A dodge puts a lit blade out for the leap; off keeps it lit. |
 | Guard Drain from Gunfire and Blocks | 1.0 | Scales the guard meter's drain from deflects, soaks, and blocked NPC photon sword strikes; 0 never drains. |
 
-**Mod options** (Options > Mods > Photon Sword Forms, `client/PhotonSwordForms/PSF_Options.lua`):
-per-player client settings.
+**Mod options** (the Forms: Dodging section of Options > Mods > Photon Sword,
+`client/PhotonSwordForms/PSF_Options.lua`): per-player client settings.
 
 | Option | Default | |
 |---|---|---|
@@ -187,7 +187,7 @@ per-player client settings.
 | Relight After Dodge | on | Relights your blade on landing when a dodge put it out. |
 
 The deflect options (Deflect Bullets, the deflect and soak chances, striking back, the whole-blast
-chance) are on Photon Sword's sandbox page, and the Deflect Text, Deflect Spark Sound, and Beckon
+chance) are in Photon Sword's sections of the sandbox page, and the Deflect Text, Deflect Spark Sound, and Beckon
 Chance mod options are Photon Sword's.
 
 ## Current status

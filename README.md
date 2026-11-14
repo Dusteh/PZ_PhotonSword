@@ -112,7 +112,15 @@ The basics are implemented but **not yet tested in-game**.
   - Sound: hum volume, and tone and pitch for the hum, swing, and hit.
   - Deflect: Show Deflect Text and Deflect Spark Sound.
   - Notifications: the low-power warning threshold.
-- **Sandbox options** (`media/sandbox-options.txt`, Photon Sword page): battery life in in-game hours
+
+  Photon Sword Forms adds its own section (Forms: Dodging) to this entry.
+- **Sandbox options** (`media/sandbox-options.txt`, Photon Sword page): one page for this mod and
+  its patch mods, in titled sections (Photon Sword, Cutting, Deflecting Gunfire, Blocking Photon
+  Swords, then Photon Sword Forms, Project A-Life NPCs, and Bandits NPCs when those are on).
+  Each mod puts its options on `page = PhotonSword` and registers its section with
+  `PS.addSandboxSection(order, title, patterns...)`; `client/PhotonSword/PS_SandboxPage.lua`
+  sorts the page and adds the titles (`Sandbox_Title_<title>`), which the new-game sandbox screen
+  draws (the in-game admin window keeps the order but draws no titles). The options: battery life in in-game hours
   (default 8, 0 disables drain), a blade damage multiplier (default 1.0), and Extinguish While
   Running (default on). The multiplier is
   applied to each blade as it ignites, so debug-spawned blades keep base damage. Five toggles

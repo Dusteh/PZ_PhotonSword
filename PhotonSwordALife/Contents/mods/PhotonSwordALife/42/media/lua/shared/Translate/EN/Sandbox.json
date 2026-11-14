@@ -1,5 +1,5 @@
 {
-    "Sandbox_PhotonSwordALife": "Photon Sword - Project A-Life",
+    "Sandbox_Title_PhotonSwordALife": "Project A-Life NPCs",
     "Sandbox_PhotonSwordALife_SpawnChance": "Photon Sword Chance (%%)",
     "Sandbox_PhotonSwordALife_SpawnChance_tooltip": "The chance a Project A-Life NPC who carries a melee weapon carries an ignited photon sword instead. Each NPC rolls once and keeps the result. 0 means no NPC carries one.",
     "Sandbox_PhotonSwordALife_BladeColor": "NPC Blade Color",
