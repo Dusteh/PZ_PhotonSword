@@ -267,11 +267,13 @@ and mesh, under The Indie Stone's Terms (see the README's
 [Third-party content](../README.md#third-party-content)). The manual's text is set in DejaVu.
 
 Some of this mod's Lua is adapted from Senator's katana art, because the parts it would reuse are
-written for one art and can't be called for a Form: `PSF_Core.lua`, `PSF_Sequence.lua`,
-`PSF_Server.lua`, `PSF_Combat.lua`, and `PSF_Form1.lua` follow `SWMK_Core.lua`,
-`SWMK_Sequence.lua`, `SWMK_Server.lua`, and `SWMK_Combat.lua`, and `PSF_Tab.lua` follows the layout
-of `SWMA_WeaponWindow.lua`. Those adapted parts are Senator's work. `PSF_Combos.lua` and
-`PSF_Movement.lua` are this mod's own, written to behave as Senator's do.
+written for one art and can't be called for a Form: `PSF_Core.lua`, `PSF_Combat.lua`, and
+`PSF_Form1.lua` follow `SWMK_Core.lua` and `SWMK_Combat.lua`, and `PSF_Tab.lua` follows the layout
+of `SWMA_WeaponWindow.lua`. Those adapted parts are Senator's work. `PSF_Combos.lua`,
+`PSF_Movement.lua`, `PSF_Sequence.lua`, and `PSF_Server.lua` are this mod's own, written to
+behave as Senator's `SWMK_Combos.lua`, `SWMA_PlayerMovement.lua`, `SWMK_Sequence.lua`, and
+`SWMK_Server.lua` do: they keep the function names Senator's machinery calls and the same rules
+and timings.
 
 ## License
 
