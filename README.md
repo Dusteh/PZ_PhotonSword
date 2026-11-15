@@ -120,6 +120,10 @@ The basics are implemented but **not yet tested in-game**.
   those and `JewelryGems`. A hilt found in a freshly filled container (`OnFillContainer`, on the
   server or in single player) holds a crystal of a random color at the Hilt Crystal Chance
   sandbox option (25%); the rest come empty.
+- **Foraging** (`shared/PhotonSword/PS_Foraging.lua`): loose crystals of every color can be found
+  in search mode under the vanilla Stones category (Foraging 2+). Each color weighs 0.1 in the wild
+  (0.05 in towns and trailer parks) against stones' 1–5, so all eight together are rarer than a
+  Limestone. Snow cuts the chance like it does for stones.
 - **Mod options** (Options > Mods > Photon Sword, `client/PhotonSword/PS_Options.lua`),
   per-player client settings:
   - Hotkeys: Ignite / Extinguish (default `Z`, can draw a sword when your hands are empty), Swap
