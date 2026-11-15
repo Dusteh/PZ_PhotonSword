@@ -28,6 +28,9 @@ PSF.byId = {}
 
 local PARRY_MS = 450   -- PSF_BlockParry, less its blend back
 local CORE_BLOCK_MS = 300   -- how recent Core's last block must be to parry it
+-- The PSF* variables a Form clears (W.clear).
+local FLAG_VARIABLES = { "PSFHolding", "PSFActive", "PSFWalking", "PSFFemale", "PSFBlock", "PSFParry" }
+local STRING_VARIABLES = { "PSFForm", "PSFMove", "PSFCompleted" }
 
 -- Martial Arts Core's block settling a blow itself (another player's, which Photon Sword leaves to
 -- it): Core stamps the guard's lastHit as it settles the blow, in the blow's OnWeaponHitCharacter.
@@ -178,13 +181,17 @@ function PSF.define(def)
     end
 
     -- Usable by a player whose active Form this is, holding an ignited photon sword in both hands.
+    -- Runs several times a frame for every player, so the cheap sword check goes before the modData
+    -- reads (W.state, PSF.activeForm).
     function W.canUse(player, weapon)
-        if not player or player:isDead() or player:getVehicle() or player:isSitOnGround()
+        if not player then return false end
+        local primary = player:getPrimaryHandItem()
+        weapon = weapon or primary
+        if not PS.isIgnited(weapon) or primary ~= weapon or player:getSecondaryHandItem() ~= weapon
+            or weapon:getCondition() <= 0 then return false end
+        if player:isDead() or player:getVehicle() or player:isSitOnGround()
             or player:isClimbingRope() then return false end
-        weapon = weapon or player:getPrimaryHandItem()
         return W.state(player).learned == true and PSF.activeForm(player) == W
-            and PS.isIgnited(weapon) and weapon:getCondition() > 0
-            and player:getPrimaryHandItem() == weapon and player:getSecondaryHandItem() == weapon
     end
 
     function W.eligible(player, weapon)
@@ -197,10 +204,8 @@ function PSF.define(def)
     end
 
     function W.clear(player)
-        for _, name in ipairs({ "PSFHolding", "PSFActive", "PSFWalking", "PSFFemale", "PSFBlock", "PSFParry" }) do
-            player:setVariable(name, false)
-        end
-        for _, name in ipairs({ "PSFForm", "PSFMove", "PSFCompleted" }) do player:setVariable(name, "") end
+        for _, name in ipairs(FLAG_VARIABLES) do player:setVariable(name, false) end
+        for _, name in ipairs(STRING_VARIABLES) do player:setVariable(name, "") end
     end
 
     -- Sets the hold and block variables the move and block AnimSets read; clears them when ineligible.
@@ -340,8 +345,9 @@ function SMA.guardDrain(attacker, target, weapon, ...)
 end
 
 -- The Form a player fights with right now: their active Form, usable with weapon and enabled.
+-- (W.eligible already includes W.canUse, which PSF.usable checks.)
 function PSF.fightingForm(player, weapon)
-    local W = PSF.usable(player, weapon)
+    local W = PSF.activeForm(player)
     return W and W.eligible(player, weapon) and W or nil
 end
 
