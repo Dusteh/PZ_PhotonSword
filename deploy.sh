@@ -3,18 +3,15 @@
 # Forms, and the compatibility patches.
 # PZ mangles script paths when the mod folder is a symlink, so this copies instead of linking.
 # The dev kits and in-game tests (dev/*DevKit*.lua) are copied in too, unless run with --release.
-#
-# The game also loads mods from ~/Zomboid/Workshop/*/Contents/mods (upload copies) and from Steam
-# subscriptions, and with two copies of one mod id it may load the old one. So this first moves any
-# upload copy of these mods to ~/Zomboid/Workshop_aside/ (README: Releasing copies a fresh one back
-# in to upload), warns about subscribed copies (unsubscribe on Steam; deleting them only makes
-# Steam download them again), and warns if the game is running (it reads mods at startup).
+# It warns if the game is running (it reads mods at startup).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")" && pwd)"
 mods=(PhotonSword PhotonSwordForms PhotonSwordBandits PhotonSwordALife PhotonSwordEoH)
+# The game also loads mods from ~/Zomboid/Workshop/*/Contents/mods (upload copies) and from Steam's
+# downloads of subscribed items, and with two copies of one mod id it may load the stale one. So
+# each mod's copies there are deleted first (clear_copies).
 workshop="$HOME/Zomboid/Workshop"
-aside="$HOME/Zomboid/Workshop_aside"
 steam_content=""
 for dir in "$HOME/.local/share/Steam" "$HOME/.steam/steam"; do
     if [ -d "$dir/steamapps/workshop/content/108600" ]; then
@@ -28,41 +25,36 @@ item_id() {
     [ -f "$1" ] && grep -m1 '^id=' "$1" | cut -d= -f2- || true
 }
 
-# set_aside MOD: moves MOD's upload copy out of ~/Zomboid/Workshop. An earlier set-aside copy is
-# replaced, unless its workshop.txt holds an id the repo doesn't (run ./release.sh --sync-ids).
-set_aside() {
-    local src="$workshop/$1" dest="$aside/$1"
-    [ -d "$src" ] || return 0
-    if [ -d "$dest" ]; then
-        local old_id
-        old_id="$(item_id "$dest/workshop.txt")"
-        if [ -n "$old_id" ] && [ "$old_id" != "$(item_id "$root/$1/workshop.txt")" ]; then
-            echo "ERROR: $dest has id=$old_id, which $1/workshop.txt lacks; sync it, then re-run" >&2
+# clear_copies MOD: deletes MOD's upload copy (~/Zomboid/Workshop/MOD; ./release.sh builds a fresh
+# one) and Steam's download of its Workshop item (the id= in MOD/workshop.txt). An upload copy whose
+# id= the repo lacks is the only record of that item, so it stops the deploy instead. Steam downloads
+# a subscribed item again when it updates or the game is verified; unsubscribe to keep it gone.
+clear_copies() {
+    local mod="$1" repo_id upload_id item
+    repo_id="$(item_id "$root/$mod/workshop.txt")"
+    if [ -d "$workshop/$mod" ]; then
+        upload_id="$(item_id "$workshop/$mod/workshop.txt")"
+        if [ -n "$upload_id" ] && [ "$upload_id" != "$repo_id" ]; then
+            echo "ERROR: $workshop/$mod has id=$upload_id, which $mod/workshop.txt lacks; record it" \
+                "(WORKSHOP_DIR=$workshop ./release.sh --sync-ids), then re-run" >&2
             exit 1
         fi
-        rm -rf "$dest"
+        rm -rf "$workshop/$mod"
+        echo "Removed the upload copy $workshop/$mod"
     fi
-    mkdir -p "$aside"
-    mv "$src" "$dest"
-    echo "Moved the upload copy $src to $dest"
-}
-
-# warn_subscribed MOD: names any Steam download of MOD, which can shadow the deployed copy.
-warn_subscribed() {
-    [ -n "$steam_content" ] || return 0
-    local info
-    for info in "$steam_content"/*/mods/"$1"/42/mod.info; do
-        [ -f "$info" ] || continue
-        local item="${info#"$steam_content"/}"
-        item="${item%%/*}"
-        echo "WARNING: subscribed to $1 on Steam (item $item); unsubscribe so the game loads the deployed copy:" >&2
-        echo "         https://steamcommunity.com/sharedfiles/filedetails/?id=$item" >&2
-    done
+    [ -n "$steam_content" ] && [ -n "$repo_id" ] || return 0
+    item="$steam_content/$repo_id"
+    [ -d "$item" ] || return 0
+    if [ "$(ls -A "$item/mods" 2>/dev/null)" != "$mod" ]; then
+        echo "WARNING: Steam item $repo_id ($item) doesn't hold just $mod; left alone" >&2
+        return 0
+    fi
+    rm -rf "$item"
+    echo "Removed Steam's download of item $repo_id ($item)"
 }
 
 for mod in "${mods[@]}"; do
-    set_aside "$mod"
-    warn_subscribed "$mod"
+    clear_copies "$mod"
 done
 
 # deploy MOD: copies MOD/Contents/mods/MOD to ~/Zomboid/mods/MOD.
@@ -110,6 +102,8 @@ devkit PhotonSwordALife PSA_DevKit.lua PSA_DevKitTest.lua
 deploy PhotonSwordEoH
 devkit PhotonSwordEoH PSE_DevKit.lua
 
-if pgrep -f "ProjectZomboid/projectzomboid.sh" >/dev/null 2>&1; then
+# The game binary itself; the launcher script's name also turns up in shells that merely mention it.
+# The pattern can't match its own text, so the shell running this doesn't count.
+if pgrep -f '(^|/)ProjectZomboid64( |$)' >/dev/null 2>&1; then
     echo "WARNING: the game is running; quit and relaunch it to load these changes." >&2
 fi

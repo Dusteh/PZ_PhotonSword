@@ -1,0 +1,41 @@
+module PhotonSword
+{
+    imports
+    {
+        Base
+    }
+
+    /*
+     * Building a photon sword hilt starts from any flashlight (tag base:flashlight, so modded ones
+     * count too; vanilla's Make Improvised Flashlight makes one): its battery comes out first
+     * (vanilla's Remove Battery), so no charge is lost, and the flashlight becomes the hilt's emitter. A metal pipe is the body,
+     * an amplifier and electronics scrap drive the emitter, and duct tape wraps the grip.
+     * The hilt comes out empty, like a looted one: it still needs a battery and a crystal.
+     */
+    craftRecipe MakePhotonSwordHilt
+    {
+        timedAction = MakingElectrical,
+        time = 300,
+        SkillRequired = Electricity:4,
+        Tags = AnySurfaceCraft,
+        category = Electrical,
+        xpAward = Electricity:25,
+        inputs
+        {
+            item 1 tags[base:screwdriver] mode:keep flags[Prop1],
+            item 1 tags[base:pliers] mode:keep flags[MayDegradeVeryLight],
+            item 1 tags[base:sheetmetalsnips;base:metalsaw] mode:keep flags[MayDegradeLight],
+            item 1 tags[base:flashlight] flags[IsEmpty],
+            item 1 [Base.MetalPipe],
+            item 1 [Base.Amplifier],
+            item 2 [Base.ElectronicsScrap],
+            item 2 [Base.ElectricWire],
+            item 1 [Base.Screws],
+            item 2 [Base.DuctTape],
+        }
+        outputs
+        {
+            item 1 PhotonSword.PhotonSwordHilt,
+        }
+    }
+}
