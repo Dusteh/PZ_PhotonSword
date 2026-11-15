@@ -314,6 +314,13 @@ test("items exist", function(t)
     end
 end)
 
+test("hilt recipe loads", function(t)
+    local recipe = getScriptManager():getCraftRecipe("PhotonSword.MakePhotonSwordHilt")
+    t.need(recipe ~= nil, "PhotonSword.MakePhotonSwordHilt is missing")
+    t.eq(recipe:getOutputs():size(), 1, "outputs")
+    t.ok(recipe:getTranslationName() ~= "MakePhotonSwordHilt", "recipe name isn't translated")
+end)
+
 test("sandbox options load", function(t)
     local vars = SandboxVars.PhotonSword
     t.need(type(vars) == "table", "no PhotonSword sandbox page")

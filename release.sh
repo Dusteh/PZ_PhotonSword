@@ -77,6 +77,21 @@ check_changelog() {
     fi
 }
 
+# check_description MOD WORKSHOP_TXT: the Workshop page fits Steam's description limit, 8000
+# (k_cchPublishedDocumentDescriptionMax in the Steamworks SDK; the game passes the text straight
+# through). It isn't clear whether Steam counts characters or bytes, or line breaks as one or two,
+# so this counts the strict way (UTF-8 bytes, each line break as CRLF) and warns from 7000.
+check_description() {
+    local mod="$1" txt="$2" size
+    [ -f "$txt" ] || return 0
+    size="$(sed -n 's/^description=//p' "$txt" | python3 -I -c 'import sys; print(len(sys.stdin.read().replace("\n", "\r\n").encode()))')"
+    if [ "$size" -gt 8000 ]; then
+        fail "$mod/workshop.txt's description is $size bytes; Steam's limit is 8000"
+    elif [ "$size" -gt 7000 ]; then
+        echo "  WARNING: $mod/workshop.txt's description is $size bytes, close to Steam's 8000" >&2
+    fi
+}
+
 check() {
     local mod="$1" dir="$root/$1"
     local contents="$dir/Contents" moddir="$dir/Contents/mods/$1"
@@ -85,6 +100,7 @@ check() {
     [ -f "$dir/workshop.txt" ] || fail "$mod/workshop.txt is missing"
     [ "$(item_id "$dir/workshop.txt")" != "0" ] || fail "$mod/workshop.txt has id=0, which the uploader takes for a real item; delete the line"
     grep -q '^title=' "$dir/workshop.txt" || fail "$mod/workshop.txt has no title="
+    check_description "$mod" "$dir/workshop.txt"
 
     # preview.png: a 256x256 PNG of at most 1000KB, as the uploader's error messages state
     # (UI_WorkshopError_Preview* in the game's media/lua/shared/Translate/EN/UI.json).

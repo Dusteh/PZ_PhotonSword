@@ -58,7 +58,7 @@ PhotonSword/
         ├── icon.png
         └── media/
             ├── AnimSets/player/  # Stance AnimSets (tools/gen_animsets.py)
-            ├── scripts/          # item_photonsword.txt, models_photonsword.txt, sounds
+            ├── scripts/          # item_photonsword.txt, recipes_photonsword.txt, models_photonsword.txt, sounds
             ├── lua/
             │   ├── client/       # UI, context menu (ignite/extinguish), light effects
             │   ├── server/       # loot distributions, power drain authority
@@ -92,9 +92,10 @@ Don't symlink it: the game breaks script paths for symlinked mods (`FileNotFound
 `/home/<user>/Zomboid/mods/home/<user>/zomboid/mods/...`). Re-run the script after every change.
 The game also loads mods from upload copies in `~/Zomboid/Workshop/` and from Steam
 subscriptions, and with two copies of one mod id it can load the stale one. So `deploy.sh` first
-moves any upload copy of these mods to `~/Zomboid/Workshop_aside/` (refusing if a set-aside copy
-holds an item id the repo lacks; run `./release.sh --sync-ids` first), warns about each mod you're
-subscribed to on Steam (unsubscribe while developing), and warns if the game is running, since it
+deletes each mod's upload copy in `~/Zomboid/Workshop/` (refusing if its `workshop.txt` holds an item
+id the repo lacks; record it with `./release.sh --sync-ids` first) and Steam's download of its
+Workshop item (by the `id=` in its `workshop.txt`). Steam downloads a subscribed item again when it
+updates, so unsubscribe while developing. It also warns if the game is running, since the game
 reads mods only at startup.
 
 ## Current status
@@ -109,6 +110,11 @@ The basics are implemented but **not yet tested in-game**.
   Battery work on inert hilts only. The server drains every ignited blade a player carries (held,
   on the hotbar, or in a bag) every in-game minute and extinguishes it when empty.
 - **Light**: the client places a colored `IsoLightSource` on each player holding an ignited blade.
+- **Crafting** (`scripts/recipes_photonsword.txt`): Make Photon Sword Hilt (Electrical,
+  Electricity 4, 25 XP) builds an empty hilt from any flashlight (`tags[base:flashlight]`, which
+  also takes modded ones; vanilla's Make Improvised Flashlight makes one) with its battery
+  removed (`IsEmpty`, so no charge is lost), a metal pipe, an amplifier, 2 electronics scrap, 2
+  electric wire, screws, and 2 duct tape, using a screwdriver, pliers, and snips or a metal saw.
 - **Loot** (`server/PhotonSword/PS_Distributions.lua`): hilts (without a battery) are added to
   `MedievalWeaponsJapan`, `MeleeWeapons_Late`, and `CrateRandomJunk`, and each crystal color to
   those and `JewelryGems`. A hilt found in a freshly filled container (`OnFillContainer`, on the
@@ -556,14 +562,16 @@ Steam.
    mods). For each mod it checks what the uploader checks: a 256x256 `preview.png` of at most
    1000KB (the limits in the uploader's own error messages), `Contents/` holding only `mods/<ID>`, both `42/` and `common/`, no
    `id=0` (the uploader takes `0` for a real item id). It also checks that the Change Log's newest
-   entry is the `mod.info` version (it refuses to build otherwise), and the `mod.info` id, poster and
+   entry is the `mod.info` version (it refuses to build otherwise), that the description fits
+   Steam's 8000 limit (counted strictly, as UTF-8 bytes with CRLF line breaks; it warns from
+   7000), and the `mod.info` id, poster and
    icon, that no Python, Blender file, or dev kit is inside `Contents/`, and the syntax of every
    Lua (`luac5.1 -p`) and JSON file. It warns if the tree has uncommitted changes. If every check
    passes, it copies `workshop.txt`, `preview.png`, and `Contents/` (without `.gitkeep`) to
    `releases/<ID>/`. Set `WORKSHOP_DIR` to build elsewhere.
 3. **Upload.** The game's uploader lists only folders in `~/Zomboid/Workshop/`, so copy each
    `releases/<ID>` folder there (`cp -r releases/<ID> ~/Zomboid/Workshop/`). The next
-   `./deploy.sh` moves it aside again, so sync its id (step 4) before deploying. Start the game with
+   `./deploy.sh` deletes it again, so sync its id (step 4) before deploying. Start the game with
    Steam running. From the main menu, choose Workshop > Create and update items, pick the mod,
    and upload. Each `workshop.txt` sets
    `visibility=private`, so new items stay hidden until you change their visibility on Steam.
