@@ -33,8 +33,8 @@ local function toggleBlade(playerObj)
             sayBad(playerObj, "IGUI_PS_NoPhotonSword")
             return
         end
-        ISInventoryPaneContextMenu.transferIfNeeded(playerObj, item)
-        ISTimedActionQueue.add(ISEquipWeaponAction:new(playerObj, item, 20, true, item:isTwoHandWeapon()))
+ --       ISInventoryPaneContextMenu.transferIfNeeded(playerObj, item)
+ --       ISTimedActionQueue.add(ISEquipWeaponAction:new(playerObj, item, 20, true, item:isTwoHandWeapon()))
     end
 
     local ignite = not PS.isIgnited(item)
