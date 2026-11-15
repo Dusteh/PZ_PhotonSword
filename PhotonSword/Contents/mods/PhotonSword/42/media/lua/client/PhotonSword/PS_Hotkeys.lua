@@ -22,20 +22,11 @@ local function sayBad(playerObj, key)
     HaloTextHelper.addBadText(playerObj, getText(key))
 end
 
--- Toggles the held photon sword; with empty hands, optionally draws one and ignites it.
+-- Toggles the held photon sword. With empty hands it does nothing: drawing one is left to the
+-- player (and to other mods' equip handling).
 local function toggleBlade(playerObj)
     local item = PS.getHeld(playerObj)
-    if not item then
-        -- Drawing is a normal equip, which aiming would cancel.
-        if not PSO.drawOnToggle:getValue() or playerObj:isAiming() then return end
-        item = PS.findInInventory(playerObj)
-        if not item then
-            sayBad(playerObj, "IGUI_PS_NoPhotonSword")
-            return
-        end
- --       ISInventoryPaneContextMenu.transferIfNeeded(playerObj, item)
- --       ISTimedActionQueue.add(ISEquipWeaponAction:new(playerObj, item, 20, true, item:isTwoHandWeapon()))
-    end
+    if not item then return end
 
     local ignite = not PS.isIgnited(item)
     if ignite and not PS.hasCrystal(item) then

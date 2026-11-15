@@ -7,8 +7,6 @@
     "UI_PS_Options_BatteryKey_tooltip": "Loads your fullest battery into the held (or first) hilt, returning the old one. Ignored when R would reload a gun, sharpen a blade, or rotate something you're placing.",
     "UI_PS_Options_CutKey": "Toggle Cutting",
     "UI_PS_Options_CutKey_tooltip": "Turns cutting on or off for your swings while holding an ignited photon sword: doors, windows, walls, objects, and vegetation, as far as the sandbox options allow. Off by default. X still racks guns when one is held.",
-    "UI_PS_Options_DrawOnToggle": "Draw When Hands Are Empty",
-    "UI_PS_Options_DrawOnToggle_tooltip": "When you press Ignite / Extinguish with no photon sword in hand, equip one (hotbar first) and ignite it.",
     "UI_PS_Options_ExtinguishOnHolster": "Extinguish When Holstered",
     "UI_PS_Options_ExtinguishOnHolster_tooltip": "Automatically extinguish a blade when it goes back on the hotbar.",
     "UI_PS_Options_Visuals": "Visuals",

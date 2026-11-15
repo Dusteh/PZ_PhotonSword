@@ -126,9 +126,9 @@ The basics are implemented but **not yet tested in-game**.
   Limestone. Snow cuts the chance like it does for stones.
 - **Mod options** (Options > Mods > Photon Sword, `client/PhotonSword/PS_Options.lua`),
   per-player client settings:
-  - Hotkeys: Ignite / Extinguish (default `Z`, can draw a sword when your hands are empty), Swap
+  - Hotkeys: Ignite / Extinguish (default `Z`, the sword in your hands), Swap
     Battery (default `R`, ignored while R would reload, sharpen, or rotate a placement), Toggle
-    Cutting (default `X`), Draw When Hands Are Empty, and Extinguish When Holstered.
+    Cutting (default `X`), and Extinguish When Holstered.
   - Visuals: blade light on/off and radius, Default Two-Handed Animations (off; the
     game's two-handed animations in place of the stance, for every player this client sees), and
     the ready stance's Beckon Chance (10%).
