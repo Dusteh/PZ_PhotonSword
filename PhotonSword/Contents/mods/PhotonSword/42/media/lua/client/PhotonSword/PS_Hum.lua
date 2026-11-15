@@ -30,14 +30,35 @@ local function startHum(key, playerObj, sound)
     hums[key] = { emitter = emitter, id = id, sound = sound, volume = 0, pitch = 1, startMs = getTimestampMs() }
 end
 
+-- Sound names are only rebuilt when their options change, not every tick.
+local function cachedName(build)
+    local lastTone, lastPitch, name
+    return function(toneBox, pitchSlider)
+        local tone, pitch = PSO.getTone(toneBox), pitchSlider:getValue()
+        if tone ~= lastTone or pitch ~= lastPitch then
+            lastTone, lastPitch, name = tone, pitch, build(tone, pitch)
+        end
+        return name
+    end
+end
+local swingName = cachedName(PS.swingSound)
+local hitName = cachedName(PS.hitSound)
+
+local humTone, humSound
+local function humName(toneBox)
+    local tone = PSO.getTone(toneBox)
+    if tone ~= humTone then humTone, humSound = tone, PS.humSound(tone) end
+    return humSound
+end
+
 local function updateWeaponSounds(playerObj, blade)
     if not instanceof(playerObj, "IsoPlayer") or not playerObj:isLocalPlayer() then return end
-    local swing = PS.swingSound(PSO.getTone(PSO.swingTone), PSO.swingPitch:getValue())
+    local swing = swingName(PSO.swingTone, PSO.swingPitch)
     if blade:getSwingSound() ~= swing then
         blade:setSwingSound(swing)
     end
     -- One spark for every kind of hit: zombies, doors, the floor, and other impacts.
-    local hit = PS.hitSound(PSO.getTone(PSO.hitTone), PSO.hitPitch:getValue())
+    local hit = hitName(PSO.hitTone, PSO.hitPitch)
     if blade:getZombieHitSound() ~= hit then
         blade:setZombieHitSound(hit)
         blade:setDoorHitSound(hit)
@@ -59,7 +80,7 @@ local function updateHum(key, playerObj)
         return
     end
 
-    local sound = PS.humSound(PSO.getTone(PSO.humTone))
+    local sound = humName(PSO.humTone)
     local hum = hums[key]
     -- Restart if the tone changed, the player's emitter changed, or the loop was culled.
     if hum and (hum.sound ~= sound or hum.emitter ~= playerObj:getEmitter()

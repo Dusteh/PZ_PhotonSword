@@ -223,11 +223,12 @@ end
 -- client, local (split-screen) players otherwise. Returns the set of keys visited.
 function PS.forEachPlayer(fn)
     local seen = {}
-    local players = isClient() and getOnlinePlayers() or IsoPlayer.getPlayers()
+    local online = isClient()
+    local players = online and getOnlinePlayers() or IsoPlayer.getPlayers()
     for i = 0, players:size() - 1 do
         local playerObj = players:get(i)
         if playerObj then
-            local key = isClient() and playerObj:getOnlineID() or i
+            local key = online and playerObj:getOnlineID() or i
             seen[key] = true
             fn(key, playerObj)
         end
@@ -450,28 +451,40 @@ function PS.isNpcBody(character)
 end
 
 -- Calls fn(zombie, zombie) for every NPC in the loaded cell holding a photon sword, lit or not.
--- The zombie and survivor lists are rescanned at most every NPC_SCAN_MS.
+-- The zombie and survivor lists are rescanned at most every NPC_SCAN_MS, and only once an NPC
+-- patch has registered a combat source (PS.addNpcCombatSource): without one, nothing arms NPCs, so
+-- the whole zombie list isn't walked for nothing.
 local NPC_SCAN_MS = 500
 local npcHolders, npcScannedMs = {}, 0
 
-function PS.forEachNpcHolder(fn)
-    local now = getTimestampMs()
-    if now - npcScannedMs >= NPC_SCAN_MS then
-        npcScannedMs = now
-        npcHolders = {}
-        local cell = getCell()
-        for _, list in ipairs({ cell and cell:getZombieList(), cell and cell:getSurvivorList() }) do
-            for i = 0, list:size() - 1 do
-                local npc = list:get(i)
-                if npc and PS.isIgnited(npc:getPrimaryHandItem()) then
-                    npcHolders[#npcHolders + 1] = npc
-                end
-            end
+local function scanList(list)
+    if not list then return end
+    for i = 0, list:size() - 1 do
+        local npc = list:get(i)
+        if npc and PS.isIgnited(npc:getPrimaryHandItem()) then
+            npcHolders[#npcHolders + 1] = npc
         end
     end
+end
+
+local function refreshNpcHolders()
+    local now = getTimestampMs()
+    if now - npcScannedMs < NPC_SCAN_MS then return end
+    npcScannedMs = now
+    npcHolders = {}
+    local cell = getCell()
+    if not cell or #PS.npcCombatSources == 0 then return end
+    scanList(cell:getZombieList())
+    scanList(cell:getSurvivorList())
+end
+
+-- Calls fn for each held, lit-or-not NPC sword; with litOnly, only for NPCs whose sword is lit.
+local function forEachNpc(fn, litOnly)
+    refreshNpcHolders()
     local seen = {}
     for _, zombie in ipairs(npcHolders) do
-        if not zombie:isDead() and PS.isIgnited(zombie:getPrimaryHandItem()) then
+        if not zombie:isDead() and PS.isIgnited(zombie:getPrimaryHandItem())
+                and (not litOnly or PS.isNpcLit(zombie)) then
             seen[zombie] = true
             fn(zombie, zombie)
         end
@@ -479,16 +492,13 @@ function PS.forEachNpcHolder(fn)
     return seen
 end
 
+function PS.forEachNpcHolder(fn)
+    return forEachNpc(fn, false)
+end
+
 -- Calls fn(zombie, zombie) for every NPC whose sword is lit (client effects: light, hum, no blood).
 function PS.forEachNpcWielder(fn)
-    local seen = {}
-    PS.forEachNpcHolder(function(zombie)
-        if PS.isNpcLit(zombie) then
-            seen[zombie] = true
-            fn(zombie, zombie)
-        end
-    end)
-    return seen
+    return forEachNpc(fn, true)
 end
 
 -- PS.forEachPlayer, then PS.forEachNpcWielder; returns every key visited.

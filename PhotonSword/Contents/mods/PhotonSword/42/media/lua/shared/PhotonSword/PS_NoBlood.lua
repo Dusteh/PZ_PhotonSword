@@ -16,7 +16,16 @@ end
 
 Events.OnPlayerUpdate.Add(onPlayerUpdate)
 
--- NPCs' blades (Bandits, Project A-Life): each client cleans the ones it draws.
+-- NPCs' blades (Bandits, Project A-Life): each client cleans the ones it draws, every NPC_MS
+-- (blood only rises on a hit, so a check per frame buys nothing).
+local NPC_MS = 100
+local cleanedMs = 0
+
 if not isServer() then
-    Events.OnTick.Add(function() PS.forEachNpcWielder(onPlayerUpdate) end)
+    Events.OnTick.Add(function()
+        local now = getTimestampMs()
+        if now - cleanedMs < NPC_MS then return end
+        cleanedMs = now
+        PS.forEachNpcWielder(onPlayerUpdate)
+    end)
 end

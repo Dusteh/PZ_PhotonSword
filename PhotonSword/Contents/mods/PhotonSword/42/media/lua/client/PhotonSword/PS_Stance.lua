@@ -25,6 +25,7 @@ local PARRY_MS = 850   -- PS_Parry, less its blend back
 local beckons = setmetatable({}, { __mode = "k" })
 local hiltBeckons = setmetatable({}, { __mode = "k" })
 local holding = setmetatable({}, { __mode = "k" })  -- players whose stance variables are set
+local hiltBeckoning = setmetatable({}, { __mode = "k" })  -- players with PSHiltBeckon set
 
 local function beckoning(states, playerObj, ready)
     if not ready then states[playerObj] = nil; return false end
@@ -48,10 +49,12 @@ function PS.holdsStance(playerObj)
     return not PSO.vanillaStance:getValue() and PS.holdsIgnited(playerObj) and not PS.yieldsStance(playerObj)
 end
 
+local HOLD_VARIABLES = { "PSHolding", "PSGuard", "PSBeckon", "PSParry", "PSWalking", "PSFemale" }
+
 local function clear(playerObj)
     holding[playerObj] = nil
     beckons[playerObj] = nil
-    for _, name in ipairs({ "PSHolding", "PSGuard", "PSBeckon", "PSParry", "PSWalking", "PSFemale" }) do
+    for _, name in ipairs(HOLD_VARIABLES) do
         playerObj:setVariable(name, false)
     end
 end
@@ -80,7 +83,12 @@ local function updateHiltBeckon(playerObj)
         and playerObj:isAiming() and not playerObj:isPlayerMoving() and not playerObj:isSneaking()
         and not playerObj:isDoShove() and not playerObj:isAimAtFloor() and not playerObj:isAttacking()
         and not playerObj:getVariableBoolean("PerformingAction") and not PS.yieldsStance(playerObj)
-    playerObj:setVariable("PSHiltBeckon", beckoning(hiltBeckons, playerObj, ready))
+    -- Written only when it changes: most frames, for most players, it stays false.
+    local beckon = beckoning(hiltBeckons, playerObj, ready)
+    if beckon ~= (hiltBeckoning[playerObj] == true) then
+        hiltBeckoning[playerObj] = beckon or nil
+        playerObj:setVariable("PSHiltBeckon", beckon)
+    end
 end
 
 local function update(playerObj)
@@ -92,11 +100,13 @@ Events.OnPlayerUpdate.Add(function(playerObj)
     if IsoPlayer.isLocalPlayer(playerObj) then update(playerObj) end
 end)
 
+local function updateRemote(_, playerObj)
+    if not IsoPlayer.isLocalPlayer(playerObj) then update(playerObj) end
+end
+
 local tick = 0
 Events.OnTick.Add(function()
     tick = tick + 1
     if tick % 3 ~= 0 or not isClient() then return end
-    PS.forEachPlayer(function(_, playerObj)
-        if not IsoPlayer.isLocalPlayer(playerObj) then update(playerObj) end
-    end)
+    PS.forEachPlayer(updateRemote)
 end)
