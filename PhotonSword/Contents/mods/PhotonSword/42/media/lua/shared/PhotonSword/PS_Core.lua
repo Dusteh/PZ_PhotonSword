@@ -2,8 +2,9 @@
 -- A photon sword exists as two item types: an inert hilt and an ignited blade.
 -- Igniting/extinguishing swaps one for the other, carrying condition and modData across.
 -- Power is stored on the item's modData (PS_charge, 0..1); nil means no battery installed.
--- A blade glows in a palette color (PS_color in modData) set from the igniting player's
--- Blade Color option, defaulting to DEFAULT_COLOR.
+-- A blade glows in the color of the photon crystal fitted in its hilt. Crystals are vanilla weapon
+-- parts (PartType Crystal), attached through the game's Add / Remove Weapon Upgrade menu like a
+-- gun's scope, so mods that extend that menu handle them too. A hilt needs a crystal to ignite.
 
 PhotonSword = PhotonSword or {}
 local PS = PhotonSword
@@ -11,10 +12,15 @@ local PS = PhotonSword
 PS.HILT_TYPE = "PhotonSword.PhotonSwordHilt"
 PS.BLADE_TYPE = "PhotonSword.PhotonSword"
 PS.BATTERY_TYPE = "Base.Battery"
+-- One crystal item per palette color: PhotonSword.PhotonCrystal_<Color>, a weapon part that
+-- mounts on the hilt in the CRYSTAL_PART slot.
+PS.CRYSTAL_PREFIX = "PhotonSword.PhotonCrystal_"
+PS.CRYSTAL_PART = "Crystal"
 
 -- Blade palette: light color as 0..1 floats (as IsoLightSource expects). Each name has a model
--- (PhotonSword_Blade_<Name>) from tools/gen_models.py, whose
--- PALETTE must list the same names. The first is the default, matching the blade item script.
+-- (PhotonSword_Blade_<Name>) and a crystal icon from tools/gen_models.py, whose PALETTE must list
+-- the same names, and a crystal item in item_photonsword.txt. The first is the default, matching
+-- the blade item script; a blade with no crystal (a debug-spawned one) glows in it.
 PS.BLADE_COLORS = { "Blue", "Green", "Red", "Purple", "Yellow", "Orange", "Cyan", "White" }
 PS.COLORS = {
     Blue = { r = 0.25, g = 0.5, b = 1.0 },
@@ -31,6 +37,7 @@ PS.COLORS = {
 -- for when SandboxVars aren't loaded. Light radius is a client mod option (PS_Options.lua).
 local DEFAULT_BATTERY_LIFE_HOURS = 8
 local DEFAULT_DAMAGE_MULTIPLIER = 1.0
+local DEFAULT_CRYSTAL_SPAWN_CHANCE = 25
 
 local function sandbox()
     return SandboxVars and SandboxVars.PhotonSword or {}
@@ -45,6 +52,11 @@ end
 
 function PS.getDamageMultiplier()
     return sandbox().DamageMultiplier or DEFAULT_DAMAGE_MULTIPLIER
+end
+
+-- Percent chance a hilt found in loot already holds a crystal of a random color (PS_Distributions.lua).
+function PS.getCrystalSpawnChance()
+    return sandbox().CrystalSpawnChance or DEFAULT_CRYSTAL_SPAWN_CHANCE
 end
 
 -- What a swing of an ignited blade cuts through (server side: PS_Cutting.lua).
@@ -151,11 +163,45 @@ function PS.chargePercent(item)
     return math.floor(PS.getCharge(item) * 100 + 0.5)
 end
 
--- The palette color a blade glows in.
+-- Photon crystals: a crystal item's color, or nil for any other item.
+function PS.crystalColor(item)
+    if not item then return nil end
+    local fullType = item:getFullType()
+    if fullType:sub(1, #PS.CRYSTAL_PREFIX) ~= PS.CRYSTAL_PREFIX then return nil end
+    local color = fullType:sub(#PS.CRYSTAL_PREFIX + 1)
+    return PS.COLORS[color] and color or nil
+end
+
+function PS.crystalType(color)
+    return PS.CRYSTAL_PREFIX .. color
+end
+
+-- The color of the crystal fitted in a hilt or blade, or nil when it has none.
+function PS.getCrystal(item)
+    return PS.crystalColor(item:getWeaponPart(PS.CRYSTAL_PART))
+end
+
+function PS.hasCrystal(item)
+    return PS.getCrystal(item) ~= nil
+end
+
+-- Fits a fresh crystal of color (a palette name) into a hilt or blade, replacing any it holds.
+-- Must run with authority, before the item is sent to clients (or followed by a sync).
+function PS.fitCrystal(item, color)
+    if not PS.COLORS[color or ""] then return end
+    local old = item:getWeaponPart(PS.CRYSTAL_PART)
+    if old then item:detachWeaponPart(old) end
+    item:attachWeaponPart(instanceItem(PS.crystalType(color)), true)
+end
+
+-- Crystal items' CanDetach (item_photonsword.txt): a crystal only comes out of an inert hilt.
+function PS.crystalCanDetach(character, weapon, part)
+    return not PS.isIgnited(weapon)
+end
+
+-- The palette color a blade glows in: its crystal's.
 function PS.getBladeColor(item)
-    local chosen = item:getModData().PS_color
-    if chosen and PS.COLORS[chosen] then return chosen end
-    return PS.BLADE_COLORS[1]
+    return PS.getCrystal(item) or PS.BLADE_COLORS[1]
 end
 
 -- Model for a blade's color; saved with the item. The icon is the hilt's for every color.
@@ -283,9 +329,8 @@ end
 
 -- Replaces a hilt with its blade (or vice versa) in whatever container holds it (the main
 -- inventory or a bag), keeping it in the same hands. Must run with authority: a timed action's
--- complete() or server code. color (ignite only) is a palette name for the blade; nil keeps the
--- color the hilt last had.
-function PS.swap(character, item, ignite, color)
+-- complete() or server code. The crystal moves across with the condition and modData.
+function PS.swap(character, item, ignite)
     if not PS.isPhotonSword(item) then return nil end
     local inv = item:getContainer() or character:getInventory()
     local newItem = instanceItem(ignite and PS.BLADE_TYPE or PS.HILT_TYPE)
@@ -299,9 +344,13 @@ function PS.swap(character, item, ignite, color)
     end
     newItem:setCondition(item:getCondition())
     newItem:copyModData(item:getModData())
+    local crystal = item:getWeaponPart(PS.CRYSTAL_PART)
+    if crystal then
+        item:detachWeaponPart(crystal)
+        newItem:attachWeaponPart(crystal, true)
+    end
     newItem:setFavorite(item:isFavorite())
     if ignite then
-        if PS.COLORS[color or ""] then newItem:getModData().PS_color = color end
         applyBladeColor(newItem)
     end
     -- Keep the hotbar binding. Hilt and blade share an AttachmentType so they fit the same slots.
@@ -353,7 +402,7 @@ function PS.npcBladeColor(key, choice)
 end
 
 -- Readies a fresh blade an NPC holds, swings, or drops, as igniting readies a player's: the
--- damage multiplier and its color. No battery: one is fitted when a player picks it up
+-- damage multiplier, and a crystal of its color, which stays in the hilt it leaves. No battery: one is fitted when a player picks it up
 -- (PS_PowerDrain.lua). Calling it again on the same blade does nothing.
 function PS.issueNpcBlade(blade, color)
     if not PS.isIgnited(blade) then return blade end
@@ -363,7 +412,7 @@ function PS.issueNpcBlade(blade, color)
     local mult = PS.getDamageMultiplier()
     blade:setMinDamage(blade:getMinDamage() * mult)
     blade:setMaxDamage(blade:getMaxDamage() * mult)
-    if PS.COLORS[color or ""] then data.PS_color = color end
+    PS.fitCrystal(blade, color)
     applyBladeColor(blade)
     return blade
 end
@@ -394,8 +443,14 @@ function PS.isNpcLit(zombie)
     return PS.npcLit[zombie] == true
 end
 
+-- Whether character is an NPC's body: a zombie (Bandits, Project A-Life) or a survivor (Echoes of
+-- Humanity).
+function PS.isNpcBody(character)
+    return character ~= nil and (instanceof(character, "IsoZombie") or instanceof(character, "IsoSurvivor"))
+end
+
 -- Calls fn(zombie, zombie) for every NPC in the loaded cell holding a photon sword, lit or not.
--- The zombie list is rescanned at most every NPC_SCAN_MS.
+-- The zombie and survivor lists are rescanned at most every NPC_SCAN_MS.
 local NPC_SCAN_MS = 500
 local npcHolders, npcScannedMs = {}, 0
 
@@ -405,11 +460,12 @@ function PS.forEachNpcHolder(fn)
         npcScannedMs = now
         npcHolders = {}
         local cell = getCell()
-        local zombies = cell and cell:getZombieList()
-        for i = 0, (zombies and zombies:size() or 0) - 1 do
-            local zombie = zombies:get(i)
-            if zombie and PS.isIgnited(zombie:getPrimaryHandItem()) then
-                npcHolders[#npcHolders + 1] = zombie
+        for _, list in ipairs({ cell and cell:getZombieList(), cell and cell:getSurvivorList() }) do
+            for i = 0, list:size() - 1 do
+                local npc = list:get(i)
+                if npc and PS.isIgnited(npc:getPrimaryHandItem()) then
+                    npcHolders[#npcHolders + 1] = npc
+                end
             end
         end
     end

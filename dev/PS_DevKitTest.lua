@@ -30,6 +30,7 @@ if isClient() then return end
 
 require "PhotonSword/PS_Core"
 require "PhotonSword/PS_Deflect"
+require "TimedActions/ISPhotonSwordToggle"
 local PS = PhotonSword
 
 PSTest = PSTest or {}
@@ -306,7 +307,9 @@ local function blade(t, color)
 end
 
 test("items exist", function(t)
-    for _, fullType in ipairs({ PS.HILT_TYPE, PS.BLADE_TYPE }) do
+    local types = { PS.HILT_TYPE, PS.BLADE_TYPE }
+    for _, color in ipairs(PS.BLADE_COLORS) do types[#types + 1] = PS.crystalType(color) end
+    for _, fullType in ipairs(types) do
         t.ok(getScriptManager():FindItem(fullType) ~= nil, fullType .. " is missing")
     end
 end)
@@ -316,15 +319,17 @@ test("sandbox options load", function(t)
     t.need(type(vars) == "table", "no PhotonSword sandbox page")
     for _, key in ipairs({ "DamageMultiplier", "DeflectBullets", "DeflectChanceMin", "DeflectChanceMax",
             "DeflectStrikesBack", "SoakShotgunBlasts", "SoakMin", "SoakMax", "SoakFullChance",
-            "BlockPhotonSwords", "BlockChanceMin", "BlockChanceMax", "NpcBlockChance", "NpcVsNpcBlockChance" }) do
+            "BlockPhotonSwords", "BlockChanceMin", "BlockChanceMax", "NpcBlockChance", "NpcVsNpcBlockChance",
+            "CrystalSpawnChance" }) do
         t.ok(vars[key] ~= nil, "option " .. key .. " not loaded (a save made before it existed?)")
     end
 end)
 
-test("ignite and extinguish keep charge and color", function(t)
+test("ignite and extinguish keep charge and crystal", function(t)
     local hilt = t.item(PS.HILT_TYPE)
     PS.setCharge(hilt, .5)
-    local lit = PS.swap(t.player, hilt, true, "Red")
+    PS.fitCrystal(hilt, "Red")
+    local lit = PS.swap(t.player, hilt, true)
     t.need(lit ~= nil and PS.isIgnited(lit), "ignite didn't make a blade")
     t.cleanup(function() if lit:getContainer() then lit:getContainer():Remove(lit) end end)
     t.eq(PS.getBladeColor(lit), "Red", "blade color")
@@ -336,6 +341,41 @@ test("ignite and extinguish keep charge and color", function(t)
     t.need(dark ~= nil and not PS.isIgnited(dark), "extinguish didn't make a hilt")
     t.cleanup(function() if dark:getContainer() then dark:getContainer():Remove(dark) end end)
     t.eq(PS.getCharge(dark), .5, "charge after extinguishing")
+    t.eq(PS.getCrystal(dark), "Red", "crystal after extinguishing")
+end)
+
+test("crystals fit the hilt as weapon parts", function(t)
+    local hilt = t.item(PS.HILT_TYPE)
+    PS.setCharge(hilt, 1)
+    local crystal = t.item(PS.crystalType("Cyan"))
+    t.need(instanceof(crystal, "WeaponPart"), "crystal isn't a weapon part")
+    t.eq(PS.crystalColor(crystal), "Cyan", "crystal color")
+    t.ok(crystal:canAttach(t.player, hilt), "vanilla won't attach it to a hilt")
+    t.ok(not PS.hasCrystal(hilt), "fresh hilt already has a crystal")
+    t.ok(not ISPhotonSwordToggle:new(t.player, hilt, true):isValid(), "ignites without a crystal")
+    hilt:attachWeaponPart(t.player, crystal)
+    t.eq(PS.getBladeColor(hilt), "Cyan", "color from the fitted part")
+    t.ok(crystal:canDetach(t.player, hilt), "can't detach from an inert hilt")
+    local blade = t.item(PS.BLADE_TYPE)
+    PS.fitCrystal(blade, "Red")
+    t.ok(not blade:getWeaponPart(PS.CRYSTAL_PART):canDetach(t.player, blade), "detaches from a lit blade")
+end)
+
+test("old Blade Color pick becomes one crystal", function(t)
+    t.need(PS.giveMigrationCrystal, "server/PhotonSword/PS_Migration.lua isn't loaded (single player only)")
+    local data = t.player:getModData()
+    local was = data.PS_crystalGiven
+    t.cleanup(function() data.PS_crystalGiven = was end)
+    local inv = t.player:getInventory()
+    local fullType = PS.crystalType("Orange")
+    local before = inv:getCountTypeRecurse(fullType)
+    t.cleanup(function()
+        while inv:getCountTypeRecurse(fullType) > before do inv:RemoveOneOf(fullType) end
+    end)
+    data.PS_crystalGiven = nil
+    t.ok(PS.giveMigrationCrystal(t.player, "Orange"), "first call gave nothing")
+    t.ok(not PS.giveMigrationCrystal(t.player, "Orange"), "second call gave another")
+    t.eq(inv:getCountTypeRecurse(fullType) - before, 1, "crystals given")
 end)
 
 test("NPC blades are issued once", function(t)

@@ -14,7 +14,13 @@ module PhotonSword
      * Both share AttachmentType = Knife so a hotbar binding survives the swap.
      * Blade swing/hit sounds come from sounds_photonsword.txt; both are re-pointed per player's
      * tone/pitch options at runtime (PS_Hum.lua). Models, textures, and the icon come from tools/gen_models.py;
-     * a blade's model is switched to its Blade Color at ignition (PS.swap).
+     * a blade's model is switched to its crystal's color at ignition (PS.swap).
+     *
+     * Photon crystals, one per palette color (PS.BLADE_COLORS), are weapon parts in their own
+     * PartType = Crystal slot, mounted on the hilt the way vanilla mounts scopes on guns: the game's
+     * Add / Remove Weapon Upgrade menu fits and removes them, and PS.swap carries the crystal
+     * between hilt and blade. A hilt ignites only with one fitted (ISPhotonSwordToggle), and only
+     * an inert hilt gives one up (CanDetach). No stat modifiers, so fitting one changes nothing else.
      */
 
     item PhotonSwordHilt
@@ -96,5 +102,109 @@ module PhotonSword
         UnequipSound = KatanaUnEquip,
         WeaponLength = 0.4,
         Sharpness = 1.0,
+    }
+
+    item PhotonCrystal_Blue
+    {
+        DisplayCategory = WeaponPart,
+        ItemType = base:weaponpart,
+        Weight = 0.05,
+        Icon = PhotonCrystal_Blue,
+        PartType = Crystal,
+        MountOn = PhotonSword.PhotonSwordHilt,
+        Tooltip = Tooltip_PS_Crystal,
+        CanDetach = PhotonSword.crystalCanDetach,
+        Tags = base:ignorezombiedensity,
+    }
+
+    item PhotonCrystal_Green
+    {
+        DisplayCategory = WeaponPart,
+        ItemType = base:weaponpart,
+        Weight = 0.05,
+        Icon = PhotonCrystal_Green,
+        PartType = Crystal,
+        MountOn = PhotonSword.PhotonSwordHilt,
+        Tooltip = Tooltip_PS_Crystal,
+        CanDetach = PhotonSword.crystalCanDetach,
+        Tags = base:ignorezombiedensity,
+    }
+
+    item PhotonCrystal_Red
+    {
+        DisplayCategory = WeaponPart,
+        ItemType = base:weaponpart,
+        Weight = 0.05,
+        Icon = PhotonCrystal_Red,
+        PartType = Crystal,
+        MountOn = PhotonSword.PhotonSwordHilt,
+        Tooltip = Tooltip_PS_Crystal,
+        CanDetach = PhotonSword.crystalCanDetach,
+        Tags = base:ignorezombiedensity,
+    }
+
+    item PhotonCrystal_Purple
+    {
+        DisplayCategory = WeaponPart,
+        ItemType = base:weaponpart,
+        Weight = 0.05,
+        Icon = PhotonCrystal_Purple,
+        PartType = Crystal,
+        MountOn = PhotonSword.PhotonSwordHilt,
+        Tooltip = Tooltip_PS_Crystal,
+        CanDetach = PhotonSword.crystalCanDetach,
+        Tags = base:ignorezombiedensity,
+    }
+
+    item PhotonCrystal_Yellow
+    {
+        DisplayCategory = WeaponPart,
+        ItemType = base:weaponpart,
+        Weight = 0.05,
+        Icon = PhotonCrystal_Yellow,
+        PartType = Crystal,
+        MountOn = PhotonSword.PhotonSwordHilt,
+        Tooltip = Tooltip_PS_Crystal,
+        CanDetach = PhotonSword.crystalCanDetach,
+        Tags = base:ignorezombiedensity,
+    }
+
+    item PhotonCrystal_Orange
+    {
+        DisplayCategory = WeaponPart,
+        ItemType = base:weaponpart,
+        Weight = 0.05,
+        Icon = PhotonCrystal_Orange,
+        PartType = Crystal,
+        MountOn = PhotonSword.PhotonSwordHilt,
+        Tooltip = Tooltip_PS_Crystal,
+        CanDetach = PhotonSword.crystalCanDetach,
+        Tags = base:ignorezombiedensity,
+    }
+
+    item PhotonCrystal_Cyan
+    {
+        DisplayCategory = WeaponPart,
+        ItemType = base:weaponpart,
+        Weight = 0.05,
+        Icon = PhotonCrystal_Cyan,
+        PartType = Crystal,
+        MountOn = PhotonSword.PhotonSwordHilt,
+        Tooltip = Tooltip_PS_Crystal,
+        CanDetach = PhotonSword.crystalCanDetach,
+        Tags = base:ignorezombiedensity,
+    }
+
+    item PhotonCrystal_White
+    {
+        DisplayCategory = WeaponPart,
+        ItemType = base:weaponpart,
+        Weight = 0.05,
+        Icon = PhotonCrystal_White,
+        PartType = Crystal,
+        MountOn = PhotonSword.PhotonSwordHilt,
+        Tooltip = Tooltip_PS_Crystal,
+        CanDetach = PhotonSword.crystalCanDetach,
+        Tags = base:ignorezombiedensity,
     }
 }

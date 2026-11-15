@@ -1,4 +1,12 @@
 {
     "PhotonSword.PhotonSwordHilt": "Photon Sword Hilt",
-    "PhotonSword.PhotonSword": "Photon Sword"
+    "PhotonSword.PhotonSword": "Photon Sword",
+    "PhotonSword.PhotonCrystal_Blue": "Blue Photon Crystal",
+    "PhotonSword.PhotonCrystal_Green": "Green Photon Crystal",
+    "PhotonSword.PhotonCrystal_Red": "Red Photon Crystal",
+    "PhotonSword.PhotonCrystal_Purple": "Purple Photon Crystal",
+    "PhotonSword.PhotonCrystal_Yellow": "Yellow Photon Crystal",
+    "PhotonSword.PhotonCrystal_Orange": "Orange Photon Crystal",
+    "PhotonSword.PhotonCrystal_Cyan": "Cyan Photon Crystal",
+    "PhotonSword.PhotonCrystal_White": "White Photon Crystal"
 }

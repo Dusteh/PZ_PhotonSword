@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "minVersion": "0.8.7",
+  "target": "@env(PREINIT)",
+  "compatibilityLevel": "JAVA_25",
+  "package": "dusteh.photonswordeoh.mixin",
+  "mixins": ["PhotonSwordEoHHitMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

@@ -127,7 +127,7 @@ local function volley(target, attacker, now)
 end
 
 -- The deflected bullet strikes the shooter: a bullet wound on a player, the weapon's hit on a zombie
--- (or an NPC built on one). Patches wrap this for shooters that take damage their own way.
+-- or a survivor (or an NPC built on one). Patches wrap this for shooters that take damage their own way.
 function PS.strikeBack(attacker, target, weapon, damage)
     if not attacker or attacker:isDead() or not PS.deflectSetting("DeflectStrikesBack") then return end
     if instanceof(attacker, "IsoPlayer") then
@@ -135,7 +135,7 @@ function PS.strikeBack(attacker, target, weapon, damage)
         part:AddDamage(math.max(5, math.min(40, damage * 10)))
         part:setHaveBullet(true, 0)
         if isServer() then sendDamage(attacker) end
-    elseif instanceof(attacker, "IsoZombie") then
+    elseif PS.isNpcBody(attacker) then
         attacker:setAttackedBy(target)
         attacker:Hit(weapon, target, damage, false, 1, false)
     end
@@ -262,7 +262,7 @@ function PS.judgeLocalBlow(attacker, player, weapon)
     return blocked
 end
 
--- Whether npc (a zombie-based NPC holding a photon sword) blocks attacker's photon sword strike: on
+-- Whether npc (an NPC holding a photon sword, on a zombie or survivor body) blocks attacker's photon sword strike: on
 -- its feet, facing the attacker, at NpcBlockChance for a player's strike or NpcVsNpcBlockChance for
 -- another NPC's. On a client its blade must also be lit
 -- (PS_NpcBlades.lua; the server doesn't track that). One roll per strike, however often it's asked.
@@ -279,7 +279,7 @@ function PS.playNpcParry(npc)
 end
 
 function PS.npcBlocks(attacker, npc, weapon)
-    if not attacker or not npc or npc == attacker or not instanceof(npc, "IsoZombie") or not photonStrike(weapon) then
+    if not attacker or not npc or npc == attacker or not PS.isNpcBody(npc) or not photonStrike(weapon) then
         return false
     end
     local now = getTimestampMs()

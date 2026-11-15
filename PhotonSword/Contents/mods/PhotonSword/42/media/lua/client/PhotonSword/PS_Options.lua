@@ -22,15 +22,7 @@ PSO.drawOnToggle = options:addTickBox("drawOnToggle", "UI_PS_Options_DrawOnToggl
 PSO.extinguishOnHolster = options:addTickBox("extinguishOnHolster", "UI_PS_Options_ExtinguishOnHolster", true, "UI_PS_Options_ExtinguishOnHolster_tooltip")
 
 options:addTitle("UI_PS_Options_Visuals")
--- Blade Color: entries are PS.BLADE_COLORS in order; the first is the default.
-PSO.bladeColor = options:addComboBox("bladeColor", "UI_PS_Options_BladeColor", "UI_PS_Options_BladeColor_tooltip")
-for i, color in ipairs(PhotonSword.BLADE_COLORS) do
-    PSO.bladeColor:addItem("IGUI_PS_Color_" .. color, i == 1)
-end
-
-function PSO.getBladeColor()
-    return PhotonSword.BLADE_COLORS[PSO.bladeColor:getValue()] or PhotonSword.BLADE_COLORS[1]
-end
+-- Blade color isn't an option: it comes from the crystal in the hilt.
 PSO.bladeLight = options:addTickBox("bladeLight", "UI_PS_Options_BladeLight", true, "UI_PS_Options_BladeLight_tooltip")
 PSO.lightRadius = options:addSlider("lightRadius", "UI_PS_Options_LightRadius", 2, 8, 1, 4, "UI_PS_Options_LightRadius_tooltip")
 -- This client animates every player with it, so it sets what this player sees (PS_Stance.lua).

@@ -12,8 +12,6 @@
     "UI_PS_Options_ExtinguishOnHolster": "Extinguish When Holstered",
     "UI_PS_Options_ExtinguishOnHolster_tooltip": "Automatically extinguish a blade when it goes back on the hotbar.",
     "UI_PS_Options_Visuals": "Visuals",
-    "UI_PS_Options_BladeColor": "Blade Color",
-    "UI_PS_Options_BladeColor_tooltip": "Color of blades you ignite: the blade, its light, and its icon. Others see the color you chose.",
     "UI_PS_Options_BladeLight": "Blade Light",
     "UI_PS_Options_BladeLight_tooltip": "Ignited blades cast colored light. Only affects what you see.",
     "UI_PS_Options_LightRadius": "Blade Light Radius",

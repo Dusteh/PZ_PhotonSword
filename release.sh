@@ -11,7 +11,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")" && pwd)"
 workshop="${WORKSHOP_DIR:-$root/releases}"
-all_mods=(PhotonSword PhotonSwordForms PhotonSwordALife PhotonSwordBandits)
+all_mods=(PhotonSword PhotonSwordForms PhotonSwordALife PhotonSwordBandits PhotonSwordEoH)
 errors=0
 
 fail() {
@@ -57,6 +57,26 @@ fi
 
 # check MOD: the rules the game's uploader (SteamWorkshopItem.validateContents) and loader apply,
 # plus a syntax check of every Lua and JSON file that ships.
+# check_changelog MOD WORKSHOP_TXT VERSION: the Workshop page's Change Log leads with an entry for
+# the version being released: a "[b][YYYY-MM-DD] [VERSION][/b]" line followed by a [list] of what
+# changed, newest entry first.
+check_changelog() {
+    local mod="$1" txt="$2" version="$3"
+    [ -f "$txt" ] || return 0
+    grep -q '^description=\[h[23]\]Change Log\[/h[23]\]$' "$txt" || {
+        fail "$mod/workshop.txt has no Change Log section"
+        return 0
+    }
+    local newest
+    newest="$(grep -m1 -E '^description=\[b\]\[[0-9]{4}-[0-9]{2}-[0-9]{2}\] \[[^]]+\]\[/b\]$' "$txt" \
+        | sed -E 's/^description=\[b\]\[[0-9-]+\] \[([^]]+)\]\[\/b\]$/\1/' || true)"
+    if [ -z "$newest" ]; then
+        fail "$mod/workshop.txt's Change Log has no [b][YYYY-MM-DD] [VERSION][/b] entry"
+    elif [ "$newest" != "$version" ]; then
+        fail "$mod/workshop.txt's newest Change Log entry is $newest, but mod.info is $version; add a [b][$(date +%F)] [$version][/b] entry at the top"
+    fi
+}
+
 check() {
     local mod="$1" dir="$root/$1"
     local contents="$dir/Contents" moddir="$dir/Contents/mods/$1"
@@ -95,6 +115,7 @@ EOF
     if [ -f "$info" ]; then
         [ "$(grep -m1 '^id=' "$info" | cut -d= -f2-)" = "$mod" ] || fail "$mod mod.info's id= isn't $mod"
         grep -q '^modversion=' "$info" || fail "$mod mod.info has no modversion="
+        check_changelog "$mod" "$dir/workshop.txt" "$(grep -m1 '^modversion=' "$info" | cut -d= -f2- || true)"
         local key file
         for key in poster icon; do
             file="$(grep -m1 "^$key=" "$info" | cut -d= -f2- || true)"
@@ -119,8 +140,14 @@ EOF
     done < <(find "$moddir" -name '*.json' -print0)
 }
 
+# Mods with an FJL Java plugin (MOD/java/) ship its jar, built fresh.
+"$root/tools/build_java.sh" >/dev/null
+
 for mod in "${mods[@]}"; do
     [ -d "$root/$mod/Contents" ] || { fail "no mod named $mod"; continue; }
+    if [ -d "$root/$mod/java" ] && ! ls "$root/$mod/Contents/mods/$mod/42/java/"*.jar >/dev/null 2>&1; then
+        fail "$mod has java/ but no built jar in 42/java/"
+    fi
     check "$mod"
 done
 if [ "$errors" -gt 0 ]; then

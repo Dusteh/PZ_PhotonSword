@@ -9,6 +9,7 @@ Writes (under the mod's 42/media):
   textures/weapons/PhotonSword_Hilt.png    hilt texture
   textures/weapons/PhotonSword_Blade_<Color>.png   one per palette color
   textures/Item_PhotonSwordHilt.png        32x32 icon, shared by the hilt and ignited blade
+  textures/Item_PhotonCrystal_<Color>.png  32x32 crystal icon, one per palette color
   scripts/models_photonsword.txt           model definitions (PhotonSword_Hilt, PhotonSword_Blade_<Color>)
 
 Meshes follow vanilla Katana.x: DirectX text format, blade along +Y, grip at the origin, and
@@ -27,7 +28,8 @@ MEDIA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
                      "PhotonSword", "Contents", "mods", "PhotonSword", "42", "media")
 
 # Must match PS.BLADE_COLORS / PS.COLORS in shared/PhotonSword/PS_Core.lua (same names, same
-# order; these are 0-255). The first is the default, which the blade item script points at.
+# order; these are 0-255) and the PhotonCrystal_<Color> items in item_photonsword.txt. The first
+# is the default, which the blade item script points at.
 PALETTE = {
     "Blue": (64, 128, 255),
     "Green": (77, 255, 89),
@@ -387,6 +389,25 @@ def make_icon():
     return img.resize((32, 32), Image.LANCZOS)
 
 
+def make_crystal_icon(color):
+    """An upright hexagonal crystal: a lit left face, a darker right face, a pale tip, and a glint."""
+    img = Image.new("RGBA", (ICON_HI, ICON_HI), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, top, shoulder, waist, bottom, half = 128, 20, 70, 190, 236, 58
+    left = [(cx - half, shoulder), (cx, top), (cx, bottom), (cx - half, waist)]
+    right = [(cx, top), (cx + half, shoulder), (cx + half, waist), (cx, bottom)]
+    draw.polygon(left, fill=mix(color, (255, 255, 255), 0.35))
+    draw.polygon(right, fill=mix(color, (0, 0, 0), 0.35))
+    draw.polygon([(cx - half, shoulder), (cx, top), (cx + half, shoulder), (cx, shoulder + 22)],
+                 fill=mix(color, (255, 255, 255), 0.6))
+    draw.line([(cx, shoulder + 22), (cx, bottom)], fill=mix(color, (255, 255, 255), 0.15), width=4)
+    outline = [(cx - half, shoulder), (cx, top), (cx + half, shoulder), (cx + half, waist), (cx, bottom),
+               (cx - half, waist)]
+    draw.line(outline + [outline[0]], fill=mix(color, (0, 0, 0), 0.6), width=8, joint="curve")
+    draw.polygon([(cx - 34, 96), (cx - 22, 84), (cx - 22, 150), (cx - 34, 162)], fill=(255, 255, 255, 200))
+    return img.resize((32, 32), Image.LANCZOS)
+
+
 MODEL_ATTACHMENTS = """        attachment world
         {
             offset = 0.0155 0.2859 0.015,
@@ -430,6 +451,7 @@ def main():
     blocks = [model_block("PhotonSword_Hilt", "weapons/PhotonSword_Hilt", "weapons/PhotonSword_Hilt")]
     for name, color in PALETTE.items():
         make_texture(color).save(os.path.join(tex_dir, f"PhotonSword_Blade_{name}.png"))
+        make_crystal_icon(color).save(os.path.join(icon_dir, f"Item_PhotonCrystal_{name}.png"))
         blocks.append(model_block(f"PhotonSword_Blade_{name}", "weapons/PhotonSword_Blade",
                                   f"weapons/PhotonSword_Blade_{name}"))
 

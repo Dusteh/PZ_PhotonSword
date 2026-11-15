@@ -38,11 +38,15 @@ local function toggleBlade(playerObj)
     end
 
     local ignite = not PS.isIgnited(item)
+    if ignite and not PS.hasCrystal(item) then
+        sayBad(playerObj, "IGUI_PS_NoCrystal")
+        return
+    end
     if ignite and PS.getCharge(item) <= 0 then
         sayBad(playerObj, "IGUI_PS_NoPower")
         return
     end
-    ISTimedActionQueue.add(ISPhotonSwordToggle:new(playerObj, item, ignite, PSO.getBladeColor()))
+    ISTimedActionQueue.add(ISPhotonSwordToggle:new(playerObj, item, ignite))
 end
 
 -- Loads the fullest battery into the held (or first) hilt, swapping out a weaker one.

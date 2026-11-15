@@ -12,6 +12,7 @@ each uploaded to the Workshop as its own item:
 | Photon Sword Forms | `PhotonSwordForms` | Fighting styles on Senator's Martial Arms ([docs](docs/PhotonSwordForms.md)) |
 | Photon Sword - Project A-Life | `PhotonSwordALife` | Patch: A-Life NPCs carry photon swords, and the guard deflects their gunfire |
 | Photon Sword - Bandits | `PhotonSwordBandits` | Patch: bandits carry photon swords, and the guard deflects their gunfire |
+| Photon Sword - Echoes of Humanity | `PhotonSwordEoH` | Patch (with a Java plugin): Echoes of Humanity NPCs carry photon swords, and the guard deflects their gunfire |
 
 The two NPC patches keep the same feature set: see [NPC patch feature set](docs/NPC_PATCHES.md).
 
@@ -21,8 +22,8 @@ Add a photon sword weapon that feels distinct from vanilla melee weapons while s
 Zomboid's survival balance:
 
 - **New weapon items.** A photon sword hilt and its ignited blade, defined as item scripts and
-  modeled on the vanilla `Katana` (`base:longblade`, two-handed, slashing). Each player picks
-  their blade color in the mod options.
+  modeled on the vanilla `Katana` (`base:longblade`, two-handed, slashing). A photon crystal
+  fitted in the hilt sets the blade's color.
 - **Ignite and extinguish.** A Lua-driven toggle between an inert hilt (light, harmless,
   stashable) and an ignited blade (high damage, emits light, hum and swing sounds).
 - **Power source.** The blade drains a power cell or battery while ignited, so it's a
@@ -39,7 +40,7 @@ Zomboid's survival balance:
 |---|---|
 | Game version | Build 42.22 or later (`versionMin=42.22.0` in every `mod.info`) |
 | Language | Lua 5.1 (Kahlua) plus PZ item/model script `.txt` files |
-| Mod IDs | `PhotonSword`, `PhotonSwordForms`, `PhotonSwordALife`, `PhotonSwordBandits` (each must match `id=` in its `mod.info`) |
+| Mod IDs | `PhotonSword`, `PhotonSwordForms`, `PhotonSwordALife`, `PhotonSwordBandits`, `PhotonSwordEoH` (each must match `id=` in its `mod.info`) |
 
 ## Layout
 
@@ -68,9 +69,11 @@ PhotonSword/
 PhotonSwordForms/                 # Companion mod: Forms, fighting styles (docs/PhotonSwordForms.md)
 PhotonSwordALife/                 # Patch mod: Project A-Life NPCs carry swords and are deflected
 PhotonSwordBandits/               # Patch mod: bandits carry swords and are deflected
+PhotonSwordEoH/                   # Patch mod: Echoes of Humanity NPCs; java/ is its FJL plugin's source
 dev/PS_DevKit.lua                 # Dev kits, deployed for testing only
 dev/PSF_DevKit.lua
 dev/PSA_DevKit.lua                # A-Life photon sword duel (PSDevKit.duel)
+dev/PSE_DevKit.lua                # Echoes of Humanity checks (PSEDevKit.spawn, duel, status, arm, strike)
 dev/*_DevKitTest.lua              # In-game test suites (PSTest.run)
 docs/PhotonSwordForms.md          # Photon Sword Forms' docs
 docs/NPC_PATCHES.md               # The feature set every NPC patch keeps
@@ -87,6 +90,12 @@ For local testing, run `./deploy.sh` to copy every mod here (Photon Sword, Photo
 the patches) into `~/Zomboid/mods/`.
 Don't symlink it: the game breaks script paths for symlinked mods (`FileNotFoundException` on
 `/home/<user>/Zomboid/mods/home/<user>/zomboid/mods/...`). Re-run the script after every change.
+The game also loads mods from upload copies in `~/Zomboid/Workshop/` and from Steam
+subscriptions, and with two copies of one mod id it can load the stale one. So `deploy.sh` first
+moves any upload copy of these mods to `~/Zomboid/Workshop_aside/` (refusing if a set-aside copy
+holds an item id the repo lacks; run `./release.sh --sync-ids` first), warns about each mod you're
+subscribed to on Steam (unsubscribe while developing), and warns if the game is running, since it
+reads mods only at startup.
 
 ## Current status
 
@@ -94,19 +103,23 @@ The basics are implemented but **not yet tested in-game**.
 
 - **Items** (`scripts/item_photonsword.txt`): `PhotonSword.PhotonSwordHilt` (inert) and
   `PhotonSword.PhotonSword` (ignited). Ignite and extinguish swap one type for the other, keeping
-  condition, modData, hotbar binding, and which hands hold it.
+  condition, modData, the fitted crystal, hotbar binding, and which hands hold it. Eight
+  `PhotonSword.PhotonCrystal_<Color>` items, one per palette color, are vanilla weapon parts.
 - **Power**: a hilt holds a battery's charge in modData (`PS_charge`). Insert Battery and Remove
   Battery work on inert hilts only. The server drains every ignited blade a player carries (held,
   on the hotbar, or in a bag) every in-game minute and extinguishes it when empty.
 - **Light**: the client places a colored `IsoLightSource` on each player holding an ignited blade.
-- **Loot**: hilts (without a battery) are added to `MedievalWeaponsJapan`, `MeleeWeapons_Late`,
-  and `CrateRandomJunk`.
+- **Loot** (`server/PhotonSword/PS_Distributions.lua`): hilts (without a battery) are added to
+  `MedievalWeaponsJapan`, `MeleeWeapons_Late`, and `CrateRandomJunk`, and each crystal color to
+  those and `JewelryGems`. A hilt found in a freshly filled container (`OnFillContainer`, on the
+  server or in single player) holds a crystal of a random color at the Hilt Crystal Chance
+  sandbox option (25%); the rest come empty.
 - **Mod options** (Options > Mods > Photon Sword, `client/PhotonSword/PS_Options.lua`),
   per-player client settings:
   - Hotkeys: Ignite / Extinguish (default `Z`, can draw a sword when your hands are empty), Swap
     Battery (default `R`, ignored while R would reload, sharpen, or rotate a placement), Toggle
     Cutting (default `X`), Draw When Hands Are Empty, and Extinguish When Holstered.
-  - Visuals: Blade Color, blade light on/off and radius, Default Two-Handed Animations (off; the
+  - Visuals: blade light on/off and radius, Default Two-Handed Animations (off; the
     game's two-handed animations in place of the stance, for every player this client sees), and
     the ready stance's Beckon Chance (10%).
   - Sound: hum volume, and tone and pitch for the hum, swing, and hit.
@@ -121,8 +134,8 @@ The basics are implemented but **not yet tested in-game**.
   `PS.addSandboxSection(order, title, patterns...)`; `client/PhotonSword/PS_SandboxPage.lua`
   sorts the page and adds the titles (`Sandbox_Title_<title>`), which the new-game sandbox screen
   draws (the in-game admin window keeps the order but draws no titles). The options: battery life in in-game hours
-  (default 8, 0 disables drain), a blade damage multiplier (default 1.0), and Extinguish While
-  Running (default on). The multiplier is
+  (default 8, 0 disables drain), a blade damage multiplier (default 1.0), Extinguish While
+  Running (default on), and Hilt Crystal Chance (25%). The multiplier is
   applied to each blade as it ignites, so debug-spawned blades keep base damage. Five toggles
   control what a swing cuts through: Destroy Doors and Windows (default on), Destroy Non-Player
   Walls (default off), Destroy World Objects (default on), Destroy Player-Built Objects (default
@@ -158,14 +171,28 @@ The basics are implemented but **not yet tested in-game**.
   sound script are both generated by `tools/gen_sounds.py` (numpy + ffmpeg); edit and re-run it
   instead of editing the script by hand.
 - **Models and icons** (`models_X/weapons/`, `textures/`, `scripts/models_photonsword.txt`): a hilt
-  model and a hilt-plus-blade model, a blade texture per palette color, and one 32x32 hilt icon
-  shared by both items (so the icon doesn't change on ignite), all
+  model and a hilt-plus-blade model, a blade texture per palette color, one 32x32 hilt icon
+  shared by both items (so the icon doesn't change on ignite), and a crystal icon per color, all
   generated by `tools/gen_models.py` (numpy + Pillow; `--preview DIR` also writes OBJs for
   Blender). The meshes copy vanilla Katana's orientation and attachment points.
-- **Blade color**: a Blade Color mod option (eight palette colors, Blue by default). The
-  igniting player's choice is stored on the blade (`PS_color`) and sets its model and light. Adding a color means adding it to
-  both `PALETTE` in `gen_models.py` and
-  `PS.BLADE_COLORS`/`PS.COLORS` in `PS_Core.lua`.
+- **Blade color**: comes from the photon crystal fitted in the hilt (eight palette colors). A
+  crystal is a vanilla weapon part (`ItemType = base:weaponpart`) in its own `PartType = Crystal`
+  slot, `MountOn` the hilt, so the game's own Add / Remove Weapon Upgrade menu fits and removes
+  it, as it does a gun's scope, and mods that extend that menu (attachment UIs) handle crystals
+  too. `PS.getCrystal` reads it with `getWeaponPart("Crystal")`; `PS.swap` moves the part between
+  hilt and blade, and it sets the blade's model and light. A hilt with no crystal won't ignite
+  (the Ignite option is greyed out, and the hotkey says "No crystal"), and the crystal's
+  `CanDetach` (`PS.crystalCanDetach`) keeps it in a lit blade. Crystals carry no stat modifiers.
+  NPC blades get a crystal of their color from `PS.issueNpcBlade` (`PS.fitCrystal`), which stays
+  in the hilt a player takes from them; a debug-spawned blade with none glows in the default Blue.
+  **Migration**: blade color used to be a per-player Blade Color mod option. Vanilla keeps the
+  old option's line (`combobox|PhotonSword|bladeColor|<n>`) in `ModOptions.ini`, so
+  `client/PhotonSword/PS_Migration.lua` reads it when a local character that has already lived
+  (`getHoursSurvived() > 0`) loads without the `PS_crystalGiven` mark, and asks the server
+  (`migrateCrystal`; directly in single player) to give one crystal of that color
+  (`server/PhotonSword/PS_Migration.lua`), once per character. New characters are just marked.
+  Adding a color means adding it to `PALETTE` in `gen_models.py`, `PS.BLADE_COLORS`/`PS.COLORS`
+  in `PS_Core.lua`, and a `PhotonCrystal_<Color>` item (with its `ItemName` translation).
 - **Stance** (`client/PhotonSword/PS_Stance.lua`, `media/AnimSets/player/*/PS_*.xml`,
   `common/media/anims_X/PS/`): an ignited sword held in both hands gets the mod's own idle, walk,
   and aim animations, over vanilla's two-handed ones. They read only the mod's variables
@@ -281,6 +308,19 @@ The basics are implemented but **not yet tested in-game**.
     `PS.judgeBlow`. A player's strike on an A-Life NPC is weighed by A-Life itself
     (`AIFence`'s `Fence.weighBlow`); `shared/PhotonSwordALife/PSA_Block.lua` wraps its
     `Fence.shield` so the NPC's sword block counts like armor that stopped the blow.
+  - **Echoes of Humanity**: covered by **Photon Sword - Echoes of Humanity** (`PhotonSwordEoH/`,
+    id `PhotonSwordEoH`). EoH runs its NPCs, their bodies (survivors, `IsoSurvivor`) and their fights
+    in Java, loaded by Faded's Java Loader (FJL), so no Lua sees its hits. It does land every NPC
+    attack (melee and ranged) and every player hit on its NPCs through the game's
+    `IsoGameCharacter.Hit`, so the patch carries a small FJL plugin (`PhotonSwordEoH/java/`, built
+    by `tools/build_java.sh` with a JDK 25 into `42/java/PhotonSwordEoH-<version>.jar`) whose mixin
+    on `Hit` asks `PhotonSwordEoHHooks.beforeHit` (`server/PhotonSwordEoH/PSE_Hooks.lua`) before any
+    hit with a survivor on either side. Returning a number settles the hit with that damage; EoH
+    takes 0 as a hit that did nothing. The hook calls `PS.judgeShot`, `PS.judgeBlow` and
+    `PS.npcBlocks` as the other patches do. FJL can't apply a mixin to another plugin's classes (it
+    looks for targets in the game jar and the plugin's own), so the plugin touches only the game's
+    `Hit`. EoH NPCs are recognised in Lua by the `EchoesOfHumanity.Npc.InstanceId` in their mod
+    data (`PSE_Core.lua`). FJL picks Java mods at launch, so a changed jar needs a game restart.
   Players usually run one NPC mod at a time. With both, a bandit's sword blocks an A-Life NPC's
   strike, but an A-Life NPC's strike at a bandit can't be blocked (A-Life hits bandits as plain
   zombies); both patch descriptions say so.
@@ -291,11 +331,13 @@ The basics are implemented but **not yet tested in-game**.
   color from its NPC Blade Color option. Bandits' patch wraps `Bandit.ApplyVisuals`, `Bandit.SetHands`,
   `Bandit.UpdateItemsToSpawnAtDeath` and `BanditCompatibility.InstanceItem` (`PSB_Arms.lua`);
   A-Life's wraps `ProfileHydrator.plan` and `apply` (`server/PhotonSwordALife/PSA_Arms.lua`) and keeps
-  the swords out of A-Life's mod loot scan (`PSA_ModLoot.lua`). Photon Sword supplies the shared parts in
+  the swords out of A-Life's mod loot scan (`PSA_ModLoot.lua`). EoH arms its NPCs in Java, so its
+  patch looks over them every 2 seconds instead (`PSE_Arms.lua`) and hands an armed NPC its sword
+  back if EoH swaps it for another melee weapon. Photon Sword supplies the shared parts in
   `PS_Core.lua`: `PS.stableRoll` and `PS.npcBladeColor` for the roll and color, `PS.issueNpcBlade` to
   ready a blade (damage multiplier, color), and `PS.forEachNpcHolder`, which finds every zombie
-  holding a photon sword. NPCs carry it dark and light it only for a fight: each patch reports when
-  its NPCs fight or close in (`PS.addNpcCombatSource`; `PSB_Combat.lua`, `PSA_Combat.lua`), and
+  or survivor holding a photon sword (`PS.isNpcBody`). NPCs carry it dark and light it only for a fight: each patch reports when
+  its NPCs fight or close in (`PS.addNpcCombatSource`; `PSB_Combat.lua`, `PSA_Combat.lua`, `PSE_Combat.lua`), and
   `client/PhotonSword/PS_NpcBlades.lua` swaps the held blade's model between the hilt and the lit
   blade, with the ignite and extinguish sounds, putting it out 4 seconds after the fight. The item
   stays the blade, so the NPC mod's AI and damage never change. The light, hum, and no-blood code
@@ -436,6 +478,17 @@ Known gaps:
   deflecting gunfire). Change its `KIT` table to adjust it, bump `KIT.version` to give it again to
   existing characters, or run `PSDevKit.give(getPlayer())` in the debug Lua console. Single player
   only. Photon Sword Forms' kit adds the Forms and Martial Arts.
+- **Echoes of Humanity** (`dev/PSE_DevKit.lua`): `PSEDevKit.spawn()` spawns a hostile EoH raider with a
+  lit photon sword 3 tiles east of you, and `PSEDevKit.duel()` two from rival factions (Bone Orchard,
+  Rangers) either side of you, to watch NPC-vs-NPC blocks. They're EoH definitions the kit registers
+  (`photonsword.dev.*`, katana loadout) and spawns through EoH's own API; a refusal prints EoH's reason.
+  `PSEDevKit.status()` says how often the Java
+  plugin has called the Lua hook (0 after a fight means it isn't loaded: check
+  `~/Zomboid/FadedJavaLoader/logs/fjl-latest.log` for `dusteh.photonswordeoh`), and how many EoH NPCs
+  are loaded and armed. `PSEDevKit.arm()` gives the nearest EoH NPC a photon sword,
+  `PSEDevKit.strike()` hits it with your held weapon through the game's `Hit` (as a real hit, so the
+  hook runs), and `PSEDevKit.alwaysBlock()` sets the NPC block chances to 100% until
+  `PSEDevKit.clear()`.
 - **A-Life duel** (`dev/PSA_DevKit.lua`): `PSDevKit.duel()` in the debug Lua console spawns two
   A-Life NPCs a few tiles either side of you, hostile to each other and neutral to you, each with
   only a lit photon sword (blue and red), so they fight at once. It uses A-Life's own spawner with
@@ -495,17 +548,22 @@ only what ships into `releases/` (gitignored), so the generators, dev kits, and 
 Steam.
 
 1. **Bump versions.** Raise `modversion=` in the `42/mod.info` of each mod that changed, and
-   update its `workshop.txt` and `mod.info` descriptions to match. Commit.
+   update its `workshop.txt` and `mod.info` descriptions to match. Add an entry for the new
+   version at the top of the `workshop.txt` Change Log (Photon Sword's is under Notes): a
+   `[b][YYYY-MM-DD] [VERSION][/b]` line with the release date, then a `[list]` of what changed,
+   written for players. Commit.
 2. **Build.** Run `./release.sh` (or `./release.sh PhotonSword PhotonSwordForms` for just some
    mods). For each mod it checks what the uploader checks: a 256x256 `preview.png` of at most
    1000KB (the limits in the uploader's own error messages), `Contents/` holding only `mods/<ID>`, both `42/` and `common/`, no
-   `id=0` (the uploader takes `0` for a real item id). It also checks the `mod.info` id, poster and
+   `id=0` (the uploader takes `0` for a real item id). It also checks that the Change Log's newest
+   entry is the `mod.info` version (it refuses to build otherwise), and the `mod.info` id, poster and
    icon, that no Python, Blender file, or dev kit is inside `Contents/`, and the syntax of every
    Lua (`luac5.1 -p`) and JSON file. It warns if the tree has uncommitted changes. If every check
    passes, it copies `workshop.txt`, `preview.png`, and `Contents/` (without `.gitkeep`) to
    `releases/<ID>/`. Set `WORKSHOP_DIR` to build elsewhere.
 3. **Upload.** The game's uploader lists only folders in `~/Zomboid/Workshop/`, so copy each
-   `releases/<ID>` folder there (`cp -r releases/<ID> ~/Zomboid/Workshop/`). Start the game with
+   `releases/<ID>` folder there (`cp -r releases/<ID> ~/Zomboid/Workshop/`). The next
+   `./deploy.sh` moves it aside again, so sync its id (step 4) before deploying. Start the game with
    Steam running. From the main menu, choose Workshop > Create and update items, pick the mod,
    and upload. Each `workshop.txt` sets
    `visibility=private`, so new items stay hidden until you change their visibility on Steam.
@@ -564,3 +622,10 @@ which aren't this repo's to license, are listed under [Third-party content](#thi
 The Indie Stone's content in the animation clips (vanilla's skeleton, mesh, and the motion the
 clips are built from), and the parts of Photon Sword Forms' Lua adapted from Senator's Martial
 Arms.
+
+
+## Mod Links/IDS:
+- Photon Sword (3839907069): https://steamcommunity.com/sharedfiles/filedetails/?id=3839907069
+- Photon Sword Forms (3839908379): https://steamcommunity.com/sharedfiles/filedetails/?id=3839908379
+- Photon Sword - Project A-Life (3839909813): https://steamcommunity.com/sharedfiles/filedetails/?id=3839909813
+- Photon Sword - Bandits (3839910332): https://steamcommunity.com/sharedfiles/filedetails/?id=3839910332

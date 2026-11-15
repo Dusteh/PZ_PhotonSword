@@ -9,6 +9,9 @@ option PhotonSword.DamageMultiplier
 option PhotonSword.ExtinguishWhileRunning
 {type = boolean, default = true, page = PhotonSword, translation = PhotonSword_ExtinguishWhileRunning,}
 
+option PhotonSword.CrystalSpawnChance
+{type = integer, min = 0, max = 100, default = 25, page = PhotonSword, translation = PhotonSword_CrystalSpawnChance,}
+
 option PhotonSword.CutDoorsAndWindows
 {type = boolean, default = true, page = PhotonSword, translation = PhotonSword_CutDoorsAndWindows,}
 

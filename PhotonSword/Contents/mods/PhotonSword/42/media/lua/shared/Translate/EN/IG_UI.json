@@ -1,6 +1,8 @@
 {
     "IGUI_PS_NoPhotonSword": "No photon sword",
     "IGUI_PS_NoPower": "No power",
+    "IGUI_PS_NoCrystal": "No crystal",
+    "IGUI_PS_CrystalMigrated": "Photon crystal added: fit it into your hilt (Add Weapon Upgrade)",
     "IGUI_PS_ExtinguishFirst": "Extinguish the blade first",
     "IGUI_PS_NoBetterBattery": "No fresher battery",
     "IGUI_PS_LowPower": "Photon Sword power low: %1%%",

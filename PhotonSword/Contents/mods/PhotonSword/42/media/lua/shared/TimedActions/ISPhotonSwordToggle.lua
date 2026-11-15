@@ -2,13 +2,13 @@ require "TimedActions/ISBaseTimedAction"
 require "PhotonSword/PS_Core"
 
 -- Ignites a hilt into a blade, or extinguishes a blade back into a hilt.
--- color (ignite only) is the igniting player's Blade Color choice.
+-- Igniting needs a crystal in the hilt, which sets the blade's color.
 ISPhotonSwordToggle = ISBaseTimedAction:derive("ISPhotonSwordToggle")
 
 function ISPhotonSwordToggle:isValid()
     if not self.item or self.item:isBroken() then return false end
     if PhotonSword.isIgnited(self.item) == self.ignite then return false end
-    if self.ignite and PhotonSword.getCharge(self.item) <= 0 then return false end
+    if self.ignite and (PhotonSword.getCharge(self.item) <= 0 or not PhotonSword.hasCrystal(self.item)) then return false end
     return isClient() or self.character:getInventory():contains(self.item)
 end
 
@@ -29,7 +29,7 @@ function ISPhotonSwordToggle:perform()
 end
 
 function ISPhotonSwordToggle:complete()
-    PhotonSword.swap(self.character, self.item, self.ignite, self.color)
+    PhotonSword.swap(self.character, self.item, self.ignite)
     return true
 end
 
@@ -40,11 +40,10 @@ function ISPhotonSwordToggle:getDuration()
     return 15
 end
 
-function ISPhotonSwordToggle:new(character, item, ignite, color)
+function ISPhotonSwordToggle:new(character, item, ignite)
     local o = ISBaseTimedAction.new(self, character)
     o.item = item
     o.ignite = ignite
-    o.color = color
     o.stopOnWalk = false
     o.stopOnRun = false
     -- Usable from the attack-ready stance, like vanilla's Rack Firearm.

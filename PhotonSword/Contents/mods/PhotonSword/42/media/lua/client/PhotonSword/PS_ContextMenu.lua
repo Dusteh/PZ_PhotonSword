@@ -1,5 +1,4 @@
 require "PhotonSword/PS_Core"
-require "PhotonSword/PS_Options"
 require "TimedActions/ISPhotonSwordToggle"
 require "TimedActions/ISPhotonSwordBattery"
 
@@ -7,7 +6,7 @@ local PS = PhotonSword
 
 local function onToggle(playerObj, item, ignite)
     ISInventoryPaneContextMenu.transferIfNeeded(playerObj, item)
-    ISTimedActionQueue.add(ISPhotonSwordToggle:new(playerObj, item, ignite, PhotonSwordOptions.getBladeColor()))
+    ISTimedActionQueue.add(ISPhotonSwordToggle:new(playerObj, item, ignite))
 end
 
 local function onInsertBattery(playerObj, item, battery)
@@ -19,6 +18,13 @@ end
 local function onRemoveBattery(playerObj, item)
     ISInventoryPaneContextMenu.transferIfNeeded(playerObj, item)
     ISTimedActionQueue.add(ISPhotonSwordBattery:new(playerObj, item, true, nil))
+end
+
+local function notAvailable(option, tooltipKey)
+    option.notAvailable = true
+    local tooltip = ISInventoryPaneContextMenu.addToolTip()
+    tooltip.description = getText(tooltipKey)
+    option.toolTip = tooltip
 end
 
 local function onFillInventoryObjectContextMenu(player, context, items)
@@ -34,7 +40,9 @@ local function onFillInventoryObjectContextMenu(player, context, items)
 
     if PS.hasBattery(item) then
         local option = context:addOption(getText("ContextMenu_PS_Ignite", PS.chargePercent(item)), playerObj, onToggle, item, true)
-        if PS.getCharge(item) <= 0 or item:isBroken() then
+        if not PS.hasCrystal(item) then
+            notAvailable(option, "ContextMenu_PS_NoCrystalFitted")
+        elseif PS.getCharge(item) <= 0 or item:isBroken() then
             option.notAvailable = true
         end
         local fresher = PS.findBestBattery(playerObj, PS.getCharge(item))
@@ -46,10 +54,7 @@ local function onFillInventoryObjectContextMenu(player, context, items)
         local battery = PS.findBestBattery(playerObj)
         local option = context:addOption(getText("ContextMenu_PS_InsertBattery"), playerObj, onInsertBattery, item, battery)
         if not battery then
-            option.notAvailable = true
-            local tooltip = ISInventoryPaneContextMenu.addToolTip()
-            tooltip.description = getText("ContextMenu_PS_NoBattery")
-            option.toolTip = tooltip
+            notAvailable(option, "ContextMenu_PS_NoBattery")
         end
     end
 end

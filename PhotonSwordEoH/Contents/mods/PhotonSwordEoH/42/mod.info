@@ -1,0 +1,16 @@
+name=Photon Sword - Echoes of Humanity
+id=PhotonSwordEoH
+description=Brings Photon Sword to Echoes of Humanity: your guard deflects its NPCs' gunfire and blocks their photon sword strikes, and NPCs with swords block yours. Work in progress. MIT licensed.
+author=Dustin Hittenmiller
+url=https://github.com/Dusteh/PZ_PhotonSword
+modversion=0.1.0
+versionMin=42.22.0
+poster=poster.png
+icon=icon.png
+require=\PhotonSword,\EchoesOfHumanity,\FadedJavaLoaderBridge
+loadModAfter=\PhotonSword,\PhotonSwordForms,\EchoesOfHumanity
+requiresJavaLoader=true
+minimumJavaLoaderVersion=0.6.7
+javaEnvironment=BOTH
+javaPluginId=dusteh.photonswordeoh
+javaPluginVersion=0.1.0

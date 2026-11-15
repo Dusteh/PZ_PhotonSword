@@ -10,7 +10,8 @@ Writes, for every mod in the repo:
 
 Each mod has its own blade color, and its own emblem behind the sword: Forms an enso, its slash
 trail; the patches the mod they patch, fused with the sword (A-Life a heartbeat the blade spikes,
-shared with this repo's other A-Life patches; Bandits a masked bandit lit by the blade).
+shared with this repo's other A-Life patches; Bandits a masked bandit lit by the blade; Echoes of
+Humanity echoes rippling out from the blade).
 The hilt is the model's own silhouette (gen_models.hilt_profile) and paint bands, widened so it
 reads at icon size. Everything is drawn upright at 4x, turned 45 degrees, and downscaled for clean
 edges. Needs Pillow, numpy (for gen_models), and the DejaVu fonts (for the preview titles).
@@ -224,12 +225,29 @@ def bandit(img, color, side):
         d.ellipse([x - hr * 0.19, y - hr * 0.06, x + hr * 0.19, y + hr * 0.06], fill=(255, 236, 220, 255))
 
 
+def echoes(img, color, side):
+    """Echoes of Humanity: echoes rippling out from the blade, fading as they spread."""
+    cx = cy = side / 2
+    for i, radius in enumerate((0.2, 0.3, 0.4, 0.5)):
+        r = side * radius
+        alpha = int(210 * (1 - i / 4.5))
+        for start, end in ((200, 250), (20, 70)):
+            layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            ImageDraw.Draw(layer).arc([cx - r, cy - r, cx + r, cy + r], start, end,
+                                      fill=mix(color, (255, 255, 255), 0.3) + (alpha,), width=int(side * 0.014))
+            halo = Image.new("RGBA", img.size, color + (0,))
+            halo.putalpha(layer.getchannel("A").filter(ImageFilter.GaussianBlur(side * 0.012)))
+            img.alpha_composite(halo)
+            img.alpha_composite(layer)
+
+
 # Mod -> (blade color, emblem drawn behind the sword or None, preview title lines).
 MODS = {
     "PhotonSword": (PALETTE["Blue"], None, ("PHOTON SWORD",)),
     "PhotonSwordForms": (PALETTE["Purple"], enso, ("PHOTON SWORD", "FORMS")),
     "PhotonSwordALife": (PALETTE["Green"], alife, ("PHOTON SWORD", "\u00d7 PROJECT A-LIFE")),
     "PhotonSwordBandits": (PALETTE["Red"], bandit, ("PHOTON SWORD", "\u00d7 BANDITS")),
+    "PhotonSwordEoH": (PALETTE["Cyan"], echoes, ("PHOTON SWORD", "\u00d7 ECHOES OF HUMANITY")),
 }
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 

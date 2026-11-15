@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "dusteh.photonswordeoh",
+  "name": "Photon Sword - Echoes of Humanity",
+  "version": "0.1.0",
+  "description": "Routes hits involving Echoes of Humanity NPCs to Photon Sword's Lua (guard, blocks).",
+  "authors": ["Dustin Hittenmiller"],
+  "environment": "BOTH",
+  "minimumLoaderVersion": "0.6.7",
+  "supportedPZBuilds": ["42.22.*"],
+  "entrypoints": { "common": ["dusteh.photonswordeoh.PhotonSwordEoHPlugin"], "client": [], "server": [] },
+  "mixinConfigs": { "common": ["photonswordeoh.mixins.json"], "client": [], "server": [] },
+  "depends": { "fjl": ">=0.6.7" },
+  "optionalDepends": {},
+  "conflicts": [],
+  "transforming": true,
+  "required": true
+}

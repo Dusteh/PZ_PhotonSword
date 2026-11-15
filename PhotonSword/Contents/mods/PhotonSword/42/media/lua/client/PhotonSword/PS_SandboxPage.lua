@@ -11,7 +11,8 @@ require "PhotonSword/PS_Core"
 local PS = PhotonSword
 
 PS.addSandboxSection(10, "PhotonSword_General",
-    "^PhotonSword%.BatteryLifeHours$", "^PhotonSword%.DamageMultiplier$", "^PhotonSword%.ExtinguishWhileRunning$")
+    "^PhotonSword%.BatteryLifeHours$", "^PhotonSword%.DamageMultiplier$", "^PhotonSword%.ExtinguishWhileRunning$",
+    "^PhotonSword%.CrystalSpawnChance$")
 PS.addSandboxSection(20, "PhotonSword_Cutting", "^PhotonSword%.Cut")
 PS.addSandboxSection(30, "PhotonSword_Deflect", "^PhotonSword%.Deflect", "^PhotonSword%.Soak")
 PS.addSandboxSection(40, "PhotonSword_Block", "^PhotonSword%.Block", "^PhotonSword%.Npc")

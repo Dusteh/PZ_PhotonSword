@@ -10,6 +10,8 @@
     "Sandbox_PhotonSword_DamageMultiplier_tooltip": "Scales an ignited blade's damage (base 11-15.4). Applies to blades ignited after the change.",
     "Sandbox_PhotonSword_ExtinguishWhileRunning": "Extinguish While Running",
     "Sandbox_PhotonSword_ExtinguishWhileRunning_tooltip": "Running or sprinting with a lit photon sword puts it out, and it relights when the run ends.",
+    "Sandbox_PhotonSword_CrystalSpawnChance": "Hilt Crystal Chance (%%)",
+    "Sandbox_PhotonSword_CrystalSpawnChance_tooltip": "Chance a photon sword hilt found as loot already holds a photon crystal, in a random color. Hilts without one need a crystal fitted before they ignite; crystals are also found on their own, in jewelry stores and with the hilts.",
     "Sandbox_PhotonSword_CutDoorsAndWindows": "Destroy Doors and Windows",
     "Sandbox_PhotonSword_CutDoorsAndWindows_tooltip": "Swinging an ignited blade at a map door or window cuts it out, along with any barricade or curtains. Player-built ones follow Destroy Player-Built Objects.",
     "Sandbox_PhotonSword_CutWalls": "Destroy Non-Player Walls",
