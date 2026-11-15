@@ -18,7 +18,6 @@ options:addTitle("UI_PS_Options_Hotkeys")
 PSO.toggleKey = options:addKeyBind("toggleKey", getText("UI_PS_Options_ToggleKey"), Keyboard.KEY_Z, "UI_PS_Options_ToggleKey_tooltip")
 PSO.batteryKey = options:addKeyBind("batteryKey", getText("UI_PS_Options_BatteryKey"), Keyboard.KEY_R, "UI_PS_Options_BatteryKey_tooltip")
 PSO.cutKey = options:addKeyBind("cutKey", getText("UI_PS_Options_CutKey"), Keyboard.KEY_X, "UI_PS_Options_CutKey_tooltip")
-PSO.drawOnToggle = options:addTickBox("drawOnToggle", "UI_PS_Options_DrawOnToggle", true, "UI_PS_Options_DrawOnToggle_tooltip")
 PSO.extinguishOnHolster = options:addTickBox("extinguishOnHolster", "UI_PS_Options_ExtinguishOnHolster", true, "UI_PS_Options_ExtinguishOnHolster_tooltip")
 
 options:addTitle("UI_PS_Options_Visuals")

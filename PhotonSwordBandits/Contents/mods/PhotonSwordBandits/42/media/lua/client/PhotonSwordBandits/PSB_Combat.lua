@@ -15,23 +15,28 @@ local PS = PhotonSword
 local ENGAGE = 6
 local ENGAGE_SQ = ENGAGE * ENGAGE
 
+-- z is the bandit's floor, already rounded down. The cheap one-axis test rejects most of a big
+-- zombie list before the rest of the sum.
 local function within(x, y, z, ox, oy, oz)
-    local dx, dy = x - ox, y - oy
-    return math.floor(z) == math.floor(oz) and dx * dx + dy * dy <= ENGAGE_SQ
+    local dx = x - ox
+    if dx > ENGAGE or dx < -ENGAGE then return false end
+    local dy = y - oy
+    return dx * dx + dy * dy <= ENGAGE_SQ and z == math.floor(oz)
 end
 
+-- Checked cheapest first: the bandit's own tasks, then the few bandits and players, then the
+-- zombies, which can number in the thousands.
 local function fighting(zombie)
     if not zombie:getVariableBoolean("Bandit") or BanditBrain == nil or BanditZombie == nil then return false end
     local brain = BanditBrain.Get(zombie)
     if type(brain) ~= "table" then return false end
-    for _, task in ipairs(brain.tasks or {}) do
-        if task.action == "Smack" then return true end
+    if brain.tasks then
+        for _, task in ipairs(brain.tasks) do
+            if task.action == "Smack" then return true end
+        end
     end
 
-    local x, y, z = zombie:getX(), zombie:getY(), zombie:getZ()
-    for _, other in pairs(BanditZombie.GetAllZ()) do
-        if within(x, y, z, other.x, other.y, other.z) then return true end
-    end
+    local x, y, z = zombie:getX(), zombie:getY(), math.floor(zombie:getZ())
     for _, other in pairs(BanditZombie.GetAllB()) do
         local otherBrain = other.brain
         if otherBrain and otherBrain ~= brain and otherBrain.hostile ~= brain.hostile
@@ -47,6 +52,9 @@ local function fighting(zombie)
                 return true
             end
         end
+    end
+    for _, other in pairs(BanditZombie.GetAllZ()) do
+        if within(x, y, z, other.x, other.y, other.z) then return true end
     end
     return false
 end

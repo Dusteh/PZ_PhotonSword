@@ -40,8 +40,15 @@ local function toggle(player, item, ignite)
     ISTimedActionQueue.add(action)
 end
 
+local dodgeAnim = setmetatable({}, { __mode = "k" })  -- player -> true while PSFDodgeAnim is set
+
+-- Written only when it changes: it runs every frame, and most of the time stays as it was.
 local function updateAnim(player)
-    player:setVariable("PSFDodgeAnim", PSFO.dodgeAnimation:getValue() and PS.isPhotonSword(player:getPrimaryHandItem()))
+    local on = PSFO.dodgeAnimation:getValue() and PS.isPhotonSword(player:getPrimaryHandItem())
+    if on ~= (dodgeAnim[player] == true) then
+        dodgeAnim[player] = on or nil
+        player:setVariable("PSFDodgeAnim", on)
+    end
 end
 
 -- Core only starts a dodge with an empty action queue, so the extinguish is queued once it has.
@@ -77,11 +84,13 @@ Events.OnPlayerUpdate.Add(function(player)
 end)
 
 -- Remote players don't get OnPlayerUpdate on this client.
+local function updateRemote(_, player)
+    if not IsoPlayer.isLocalPlayer(player) then updateAnim(player) end
+end
+
 local tick = 0
 Events.OnTick.Add(function()
     tick = tick + 1
     if tick % 3 ~= 0 or not isClient() then return end
-    PS.forEachPlayer(function(_, player)
-        if not IsoPlayer.isLocalPlayer(player) then updateAnim(player) end
-    end)
+    PS.forEachPlayer(updateRemote)
 end)
