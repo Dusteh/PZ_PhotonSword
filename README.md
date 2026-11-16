@@ -572,18 +572,18 @@ Steam.
    icon, that no Python, Blender file, or dev kit is inside `Contents/`, and the syntax of every
    Lua (`luac5.1 -p`) and JSON file. It warns if the tree has uncommitted changes. If every check
    passes, it copies `workshop.txt`, `preview.png`, and `Contents/` (without `.gitkeep`) to
-   `releases/<ID>/`. Set `WORKSHOP_DIR` to build elsewhere.
-3. **Upload.** The game's uploader lists only folders in `~/Zomboid/Workshop/`, so copy each
-   `releases/<ID>` folder there (`cp -r releases/<ID> ~/Zomboid/Workshop/`). The next
-   `./deploy.sh` deletes it again, so sync its id (step 4) before deploying. Start the game with
-   Steam running. From the main menu, choose Workshop > Create and update items, pick the mod,
+   `releases/<ID>/`, and from there to `~/Zomboid/Workshop/<ID>/`, the only folder the game's
+   uploader lists. Set `WORKSHOP_DIR` to build elsewhere, and `UPLOAD_DIR` to copy somewhere
+   other than `~/Zomboid/Workshop` (`UPLOAD_DIR=` skips the copy).
+3. **Upload.** The next `./deploy.sh` deletes the copies in `~/Zomboid/Workshop/`, so upload and
+   sync the ids (step 4) before deploying. Start the game with Steam running. From the main menu, choose Workshop > Create and update items, pick the mod,
    and upload. Each `workshop.txt` sets
    `visibility=private`, so new items stay hidden until you change their visibility on Steam.
 4. **Record the item ids.** The first upload of a mod writes its new `id=` into the uploaded
-   `workshop.txt`. Copy that file back to `releases/<ID>/` (or set `WORKSHOP_DIR=~/Zomboid/Workshop`),
-   run `./release.sh --sync-ids` to copy each new id into the repo, then commit it, so later
-   uploads update the same item. Until you sync, `release.sh` keeps an id in `releases/` that the
-   repo lacks, so a rebuild doesn't create a duplicate item.
+   `workshop.txt` in `~/Zomboid/Workshop/<ID>/`. Run `./release.sh --sync-ids` to copy each new
+   id into the repo (it reads `releases/` and `~/Zomboid/Workshop/`), then commit it, so later
+   uploads update the same item. Until you sync, `release.sh` keeps an id in either folder that
+   the repo lacks, so a rebuild doesn't create a duplicate item.
 5. **Tag.** Tag the release commit (for example `git tag photonsword-v0.1.0`) and push it with
    the branch.
 

@@ -36,7 +36,7 @@ clear_copies() {
         upload_id="$(item_id "$workshop/$mod/workshop.txt")"
         if [ -n "$upload_id" ] && [ "$upload_id" != "$repo_id" ]; then
             echo "ERROR: $workshop/$mod has id=$upload_id, which $mod/workshop.txt lacks; record it" \
-                "(WORKSHOP_DIR=$workshop ./release.sh --sync-ids), then re-run" >&2
+                "(./release.sh --sync-ids), then re-run" >&2
             exit 1
         fi
         rm -rf "$workshop/$mod"

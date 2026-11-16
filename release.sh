@@ -2,15 +2,20 @@
 # Builds the mods' Steam Workshop releases into releases/ at the repo root.
 #
 #   ./release.sh [MOD...]     check every mod (or just the ones named) and build it into releases/
+#                             and ~/Zomboid/Workshop/
 #   ./release.sh --sync-ids   after uploading, copy each item's new id= back into this repo
 #
 # Each mod's Workshop folder (workshop.txt, preview.png, Contents/) is checked against the game
-# uploader's rules and copied to releases/<MOD>. Only those files go: tools/, dev/ (the dev
-# kits), docs/, and the generators never leave the repo. Set WORKSHOP_DIR to build somewhere else.
+# uploader's rules and copied to releases/<MOD>, then to ~/Zomboid/Workshop/<MOD>, the only place
+# the in-game uploader looks. Only those files go: tools/, dev/ (the dev kits), docs/, and the
+# generators never leave the repo. Set WORKSHOP_DIR to build somewhere else, and UPLOAD_DIR to
+# copy somewhere other than ~/Zomboid/Workshop (empty to skip the copy).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")" && pwd)"
 workshop="${WORKSHOP_DIR:-$root/releases}"
+upload="${UPLOAD_DIR-$HOME/Zomboid/Workshop}"
+[ "$upload" != "$workshop" ] || upload=""
 all_mods=(PhotonSword PhotonSwordForms PhotonSwordALife PhotonSwordBandits PhotonSwordEoH)
 errors=0
 
@@ -24,18 +29,32 @@ item_id() {
     [ -f "$1" ] && grep -m1 '^id=' "$1" | cut -d= -f2- || true
 }
 
+# built_id MOD: the id= a build of MOD holds, in releases/ or the upload copy (where the uploader
+# writes it). Fails if the two disagree, since only one can be the real item.
+built_id() {
+    local mod="$1" id upload_id
+    id="$(item_id "$workshop/$mod/workshop.txt")"
+    [ -n "$upload" ] || { echo "$id"; return 0; }
+    upload_id="$(item_id "$upload/$mod/workshop.txt")"
+    if [ -n "$id" ] && [ -n "$upload_id" ] && [ "$id" != "$upload_id" ]; then
+        echo "  ERROR: $mod has id=$id in $workshop but id=$upload_id in $upload; fix one by hand" >&2
+        return 1
+    fi
+    echo "${id:-$upload_id}"
+}
+
 # --sync-ids: the uploader writes the new item's id= into the uploaded workshop.txt. Keep it in the
 # repo, so the next upload updates that item instead of creating another.
 if [ "${1:-}" = "--sync-ids" ]; then
     for mod in "${all_mods[@]}"; do
-        id="$(item_id "$workshop/$mod/workshop.txt")"
+        id="$(built_id "$mod")" || { errors=$((errors + 1)); continue; }
         repo_id="$(item_id "$root/$mod/workshop.txt")"
         if [ -z "$id" ]; then
-            echo "$mod: not uploaded yet (no id= in $workshop/$mod/workshop.txt)"
+            echo "$mod: not uploaded yet (no id= in its built workshop.txt)"
         elif [ "$id" = "$repo_id" ]; then
             echo "$mod: id=$id (already in the repo)"
         elif [ -n "$repo_id" ]; then
-            fail "$mod: releases/ has id=$id but the repo has id=$repo_id; fix one by hand"
+            fail "$mod: the build has id=$id but the repo has id=$repo_id; fix one by hand"
         else
             sed -i "s/^version=\(.*\)$/version=\1\nid=$id/" "$root/$mod/workshop.txt"
             echo "$mod: id=$id written to $mod/workshop.txt"
@@ -173,9 +192,9 @@ fi
 
 for mod in "${mods[@]}"; do
     dest="$workshop/$mod"
-    # An id= in releases/ the repo doesn't have yet (uploaded, not synced) is kept, so the next
-    # upload updates that item instead of creating a duplicate.
-    built_id="$(item_id "$dest/workshop.txt")"
+    # An id= in releases/ or the upload copy that the repo doesn't have yet (uploaded, not synced)
+    # is kept, so the next upload updates that item instead of creating a duplicate.
+    built_id="$(built_id "$mod")" || exit 1
     mkdir -p "$dest/Contents"
     rsync -a --delete --exclude='.gitkeep' "$root/$mod/Contents/" "$dest/Contents/"
     cp "$root/$mod/preview.png" "$dest/preview.png"
@@ -184,12 +203,18 @@ for mod in "${mods[@]}"; do
         sed -i "s/^version=\(.*\)$/version=\1\nid=$built_id/" "$dest/workshop.txt"
         echo "NOTE: $mod keeps id=$built_id; run ./release.sh --sync-ids" >&2
     fi
+    where="$dest"
+    if [ -n "$upload" ]; then
+        mkdir -p "$upload/$mod"
+        rsync -a --delete "$dest/" "$upload/$mod/"
+        where="$where and $upload/$mod"
+    fi
     version="$(grep -m1 '^modversion=' "$root/$mod/Contents/mods/$mod/42/mod.info" | cut -d= -f2-)"
     id="$(item_id "$dest/workshop.txt")"
     if [ -n "$id" ]; then
-        echo "Built $mod $version to $dest (updates Workshop item $id)"
+        echo "Built $mod $version to $where (updates Workshop item $id)"
     else
-        echo "Built $mod $version to $dest (new Workshop item)"
+        echo "Built $mod $version to $where (new Workshop item)"
     fi
 done
-echo "Upload each releases/<MOD> folder (see README: Releasing). Then run ./release.sh --sync-ids."
+echo "Upload each mod from the game's Workshop menu (see README: Releasing). Then run ./release.sh --sync-ids."
